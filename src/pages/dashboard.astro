@@ -1,0 +1,219 @@
+---
+import "../styles/global.css";
+---
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Architectural Ledger</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+
+<body class="bg-surface text-on-surface min-h-screen pb-28">
+  <!-- Top App Bar -->
+  <header class="flex justify-between items-center w-full px-4 h-16 sticky top-0 z-50 bg-surface border-b border-outline-variant/20">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+        <img alt="User" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIe9_jd7Wc3hTon_33xPosZWzLZYjLZdb79rKNJMrIKPFPI8VGKIVHmBcH7X0PeRLFUuQPYwPbEypNZdI5utqBPkQF8NHbUZMvY9nNdaZKXNeePHgjpF_g9GWPpwN3fTd3hh8pJF-IUiMnuzS2mFLcjl3UrmTk7osmzA9i-PCSQ4Cgaerfa3YgQTBw0byZVKDmKzfwtW2ZRhSu88Z93gc4PPR1KNnrD6zy7v_fVK1-VqqUz9P0mUf71kPrlVyWN78EBu8UHF_-zQ7u" />
+      </div>
+      <span class="text-lg font-bold tracking-tighter text-primary">Architectural Ledger</span>
+    </div>
+    <button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors">
+      <span class="material-symbols-outlined">notifications</span>
+    </button>
+  </header>
+
+  <main class="px-4 py-6 space-y-8 max-w-md mx-auto">
+    <!-- Hero Financial Summary -->
+    <section class="space-y-4">
+      <div class="flex justify-between items-end">
+        <div>
+          <span class="text-[10px] font-medium uppercase tracking-wider text-on-surface-variant">Portfolio Overview</span>
+          <h1 class="text-2xl font-extrabold tracking-tight">Financial Status</h1>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] font-medium uppercase tracking-wider text-on-surface-variant">Updated</span>
+          <p class="text-xs font-semibold">Today, 09:41 AM</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3">
+        <div class="bg-linear-to-br from-primary to-primary-container p-5 rounded-xl text-on-primary shadow-lg">
+          <div class="flex justify-between items-start mb-4">
+            <span class="text-[10px] font-medium uppercase tracking-widest opacity-80">NET BALANCE</span>
+            <span class="material-symbols-outlined opacity-80">account_balance</span>
+          </div>
+          <div class="text-3xl font-bold tracking-tighter">$3,589,339.50</div>
+          <div class="mt-4 flex items-center gap-2 text-xs">
+            <span class="bg-white/20 px-2 py-0.5 rounded-full">+2.4% from last month</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-surface-container-lowest p-4 rounded-xl border-b border-outline-variant/15">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">TOTAL HABER</span>
+            <div class="text-lg font-bold text-tertiary mt-1">$4,829,450.00</div>
+          </div>
+          <div class="bg-surface-container-lowest p-4 rounded-xl border-b border-outline-variant/15">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">TOTAL DEBE</span>
+            <div class="text-lg font-bold text-error mt-1">$1,240,110.50</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Active Projects (Horizontal List) -->
+    <section class="space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-on-surface">Active Projects</h2>
+        <button class="text-xs font-semibold text-primary">View All</button>
+      </div>
+
+      <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
+        <!-- Project card (repeated) -->
+        <div class="min-w-70 bg-surface-container-low p-4 rounded-xl space-y-4 shrink-0">
+          <div class="flex justify-between items-start">
+            <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm">
+              <span class="material-symbols-outlined">architecture</span>
+            </div>
+            <span class="px-2 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold uppercase">ON SCHEDULE</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm leading-tight">North Bridge Infrastructure</h3>
+            <p class="text-xs text-on-surface-variant mt-1">Sector 7-B Revitalization</p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[10px] font-bold">
+              <span class="text-on-surface-variant">PROGRESS</span>
+              <span class="text-primary">74%</span>
+            </div>
+            <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+              <div class="h-full bg-primary rounded-full w-[74%]"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="min-w-70 bg-surface-container-low p-4 rounded-xl space-y-4 shrink-0">
+          <div class="flex justify-between items-start">
+            <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm">
+              <span class="material-symbols-outlined">home_work</span>
+            </div>
+            <span class="px-2 py-1 rounded-full bg-secondary-fixed text-on-secondary-container text-[10px] font-bold uppercase">REVIEWING</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm leading-tight">Skyline Heights Residences</h3>
+            <p class="text-xs text-on-surface-variant mt-1">Phase II Concrete Pour</p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[10px] font-bold">
+              <span class="text-on-surface-variant">PROGRESS</span>
+              <span class="text-primary">42%</span>
+            </div>
+            <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+              <div class="h-full bg-primary rounded-full w-[42%]"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="min-w-70 bg-surface-container-low p-4 rounded-xl space-y-4 shrink-0">
+          <div class="flex justify-between items-start">
+            <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm">
+              <span class="material-symbols-outlined">construction</span>
+            </div>
+            <span class="px-2 py-1 rounded-full bg-error-container text-on-error-container text-[10px] font-bold uppercase">OVER BUDGET</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm leading-tight">Waterfront Plaza</h3>
+            <p class="text-xs text-on-surface-variant mt-1">Utility Relocation Project</p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[10px] font-bold">
+              <span class="text-on-surface-variant">PROGRESS</span>
+              <span class="text-primary">91%</span>
+            </div>
+            <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+              <div class="h-full bg-error rounded-full w-[91%]"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Valuations -->
+    <section class="space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-on-surface">Recent Valuations</h2>
+        <span class="material-symbols-outlined text-on-surface-variant text-xl">filter_list</span>
+      </div>
+      <div class="space-y-2">
+        <div class="bg-surface-container-lowest p-4 rounded-xl border-b border-outline-variant/15 flex items-center justify-between">
+          <div class="flex gap-3 items-center">
+            <div class="w-2 h-10 bg-primary-container rounded-full"></div>
+            <div>
+              <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">VAL-2024-081</p>
+              <p class="text-sm font-bold">Site Clearance &amp; Prep</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold text-primary">$124,500.00</p>
+            <span class="text-[9px] px-2 py-0.5 rounded-full bg-primary-container text-primary font-bold uppercase">COLLECTED</span>
+          </div>
+        </div>
+
+        <div class="bg-surface-container-lowest p-4 rounded-xl border-b border-outline-variant/15 flex items-center justify-between">
+          <div class="flex gap-3 items-center">
+            <div class="w-2 h-10 bg-secondary-container rounded-full"></div>
+            <div>
+              <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">VAL-2024-082</p>
+              <p class="text-sm font-bold">Foundation Reinforcement</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold text-on-surface">$215,800.00</p>
+            <span class="text-[9px] px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-bold uppercase">DRAFT</span>
+          </div>
+        </div>
+
+        <div class="bg-surface-container-lowest p-4 rounded-xl border-b border-outline-variant/15 flex items-center justify-between">
+          <div class="flex gap-3 items-center">
+            <div class="w-2 h-10 bg-tertiary-container rounded-full"></div>
+            <div>
+              <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">VAL-2024-083</p>
+              <p class="text-sm font-bold">Structural Steelwork</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold text-tertiary">$450,200.00</p>
+            <span class="text-[9px] px-2 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container font-bold uppercase">APPROVED</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/80 backdrop-blur-xl shadow-[0_-8px_32px_rgba(13,28,47,0.06)] border-t border-outline-variant/20">
+    <a class="flex flex-col items-center justify-center bg-primary-fixed text-primary-container rounded-xl px-3 py-1.5 transition-transform active:scale-95 duration-150" href="#">
+      <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider mt-1">Dashboard</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1.5 transition-transform active:scale-95 duration-150 hover:text-primary" href="#">
+      <span class="material-symbols-outlined">architecture</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Projects</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1.5 transition-transform active:scale-95 duration-150 hover:text-primary" href="#">
+      <span class="material-symbols-outlined">assignment_turned_in</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Valuations</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1.5 transition-transform active:scale-95 duration-150 hover:text-primary" href="#">
+      <span class="material-symbols-outlined">account_balance_wallet</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Ledger</span>
+    </a>
+  </nav>
+
+  <!-- Floating Action Button -->
+  <button class="fixed bottom-24 right-4 w-14 h-14 bg-linear-to-br from-primary to-primary-container text-on-primary rounded-2xl shadow-xl flex items-center justify-center transition-transform active:scale-90">
+    <span class="material-symbols-outlined text-3xl">add</span>
+  </button>
+</body>
