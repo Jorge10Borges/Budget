@@ -14,7 +14,12 @@ if (!DB_HOST || !DB_USER || !DB_PASSWORD || !DB_NAME) {
   process.exit(2);
 }
 
-const sqlPath = path.resolve(process.cwd(), 'scripts', 'create_projects_table.sql');
+// Allow passing a SQL file path as first CLI argument, otherwise default to create_projects_table.sql
+const argPath = process.argv[2];
+const sqlPath = argPath
+  ? path.resolve(process.cwd(), argPath)
+  : path.resolve(process.cwd(), 'scripts', 'create_projects_table.sql');
+
 if (!fs.existsSync(sqlPath)) {
   console.error('No se encontró', sqlPath);
   process.exit(3);
@@ -30,7 +35,8 @@ async function run() {
       user: DB_USER,
       password: DB_PASSWORD,
       database: DB_NAME,
-      charset: 'utf8mb4'
+      charset: 'utf8mb4',
+      multipleStatements: true
     });
 
     console.log('Conectado a', DB_HOST, 'base', DB_NAME);
