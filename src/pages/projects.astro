@@ -1,5 +1,52 @@
 ---
 import "../styles/global.css";
+export const prerender = false;
+
+const apiToken = process.env.API_TOKEN;
+const { request } = Astro;
+const base = new URL(request.url);
+
+let projects = [];
+let meta = {};
+
+try {
+  const url = new URL('/api/projects', base.origin);
+  url.searchParams.set('per_page', '100');
+  // Build Headers safely so TypeScript/ASTRO doesn't complain about possibly undefined values
+  const headers = new Headers();
+  if (apiToken) headers.set('x-api-token', apiToken);
+  const res = await fetch(url.toString(), { headers });
+  if (res.ok) {
+    const json = await res.json();
+    projects = json.data || [];
+    meta = json.meta || {};
+  } else {
+    console.error('API /api/projects responded', res.status);
+  }
+} catch (err) {
+  console.error('Failed to fetch /api/projects', err);
+}
+
+// Helper: badge classes and icon mapping for project status
+function badgeClasses(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'active') return 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed-variant text-xs font-semibold';
+  if (s === 'draft') return 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-semibold';
+  if (s === 'paused') return 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-error text-on-error text-xs font-semibold';
+  if (s === 'completed') return 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-tertiary text-on-tertiary text-xs font-semibold';
+  if (s === 'cancelled') return 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-error-container text-error text-xs font-semibold';
+  return 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-semibold';
+}
+
+function badgeIcon(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'active') return 'check_circle';
+  if (s === 'draft') return 'edit';
+  if (s === 'paused') return 'pause_circle';
+  if (s === 'completed') return 'task_alt';
+  if (s === 'cancelled') return 'cancel';
+  return 'info';
+}
 ---
 
 <head>
@@ -47,119 +94,66 @@ import "../styles/global.css";
 
     <!-- Project Cards List -->
     <div class="space-y-4">
-      <!-- Card 1 -->
-      <article class="bg-surface-container-lowest p-5 rounded-2xl shadow-md border border-outline-variant/10">
-        <div class="flex justify-between items-start mb-4">
-          <div class="space-y-1">
-            <span class="text-[0.6875rem] font-medium text-on-surface-variant tracking-wider">PRJ-2024-001</span>
-            <h3 class="text-base font-bold text-on-surface leading-tight">Residencial Skyview</h3>
-          </div>
-          <button class="material-symbols-outlined text-outline">more_vert</button>
-        </div>
-        <div class="flex items-center gap-2 mb-4">
-          <span class="px-3 py-1 bg-tertiary-fixed text-tertiary text-[10px] font-bold uppercase tracking-wider rounded-full">En curso</span>
-        </div>
+      {projects.length === 0 ? (
+        <p class="text-sm text-on-surface-variant">No hay proyectos para mostrar.</p>
+      ) : (
+        projects.map((p: { external_id: any; id: any; name: unknown; client: unknown; status: unknown; budget_amount: any; start_date: string; }) => (
+          <article class="bg-surface-container-lowest p-5 rounded-2xl shadow-md border border-outline-variant/10">
+            <div class="flex justify-between items-start mb-4">
+              <div class="space-y-1">
+                <span class="text-[0.6875rem] font-medium text-on-surface-variant tracking-wider">{p.external_id || p.id}</span>
+                <h3 class="text-base font-bold text-on-surface leading-tight">{p.name}</h3>
+                {p.client ? <p class="text-[0.75rem] text-on-surface-variant">{p.client}</p> : null}
+              </div>
+              <div class="text-right">
+                <button class="more-btn material-symbols-outlined text-outline" data-project-id="{p.id}" aria-haspopup="true" aria-label="Más opciones">more_vert</button>
+                <div class="text-right">
+                  <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Fechas</p>
+                  <p class="text-sm font-semibold text-primary">{p.start_date ? p.start_date.split('T')[0] : '—'}</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 mb-4">
+              <span class={badgeClasses(p.status)} role="status" aria-label={String(p.status)}>
+                <span class="material-symbols-outlined text-[14px] leading-none">{badgeIcon(p.status)}</span>
+                <span class="uppercase tracking-wider text-[10px]">{String(p.status)}</span>
+              </span>
+            </div>
 
-        <!-- Financial Summary -->
-        <div class="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Presupuesto</p>
-            <p class="text-sm font-semibold text-on-surface">$1.240.000</p>
-          </div>
-          <div class="text-right">
-            <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Gastado</p>
-            <p class="text-sm font-semibold text-primary">$845.200</p>
-          </div>
-        </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Presupuesto</p>
+                <p class="text-sm font-semibold text-on-surface">{p.budget_amount ? `$${Number(p.budget_amount).toLocaleString('en-US')}` : '—'}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Gastado</p>
+                <p class="text-sm font-semibold text-primary">Monto Gastado</p>
+              </div>
+            </div>
 
-        <!-- Progress Bar -->
-        <div>
-          <div class="flex justify-between text-[0.6875rem] font-bold text-on-surface-variant mb-2">
-            <span>Progreso Visual</span>
-            <span>68%</span>
-          </div>
-          <div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div class="h-full bg-primary rounded-full" style="width:68%"></div>
-          </div>
-        </div>
-      </article>
-
-      <!-- Card 2 -->
-      <article class="bg-surface-container-lowest p-5 rounded-2xl shadow-md border border-outline-variant/10">
-        <div class="flex justify-between items-start mb-4">
-          <div class="space-y-1">
-            <span class="text-[0.6875rem] font-medium text-on-surface-variant tracking-wider">PRJ-2023-089</span>
-            <h3 class="text-base font-bold text-on-surface leading-tight">Puente Sur</h3>
-          </div>
-          <button class="material-symbols-outlined text-outline">more_vert</button>
-        </div>
-        <div class="flex items-center gap-2 mb-4">
-          <span class="px-3 py-1 bg-error-container text-error text-[10px] font-bold uppercase tracking-wider rounded-full">Retrasado</span>
-        </div>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Presupuesto</p>
-            <p class="text-sm font-semibold text-on-surface">$3.500.000</p>
-          </div>
-          <div class="text-right">
-            <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Gastado</p>
-            <p class="text-sm font-semibold text-primary">$3.120.000</p>
-          </div>
-        </div>
-        <div>
-          <div class="flex justify-between text-[0.6875rem] font-bold text-on-surface-variant mb-2">
-            <span>Progreso Visual</span>
-            <span>89%</span>
-          </div>
-          <div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div class="h-full bg-error rounded-full" style="width:89%"></div>
-          </div>
-        </div>
-      </article>
-
-      <!-- Card 3 -->
-      <article class="bg-surface-container-lowest p-5 rounded-2xl shadow-md border border-outline-variant/10">
-        <div class="flex justify-between items-start mb-4">
-          <div class="space-y-1">
-            <span class="text-[0.6875rem] font-medium text-on-surface-variant tracking-wider">PRJ-2024-012</span>
-            <h3 class="text-base font-bold text-on-surface leading-tight">Complejo Industrial Norte</h3>
-          </div>
-          <button class="material-symbols-outlined text-outline">more_vert</button>
-        </div>
-        <div class="flex items-center gap-2 mb-4">
-          <span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-wider rounded-full">Finalizado</span>
-        </div>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Presupuesto</p>
-            <p class="text-sm font-semibold text-on-surface">$850.000</p>
-          </div>
-          <div class="text-right">
-            <p class="text-[0.625rem] text-on-surface-variant uppercase font-bold mb-1">Gastado</p>
-            <p class="text-sm font-semibold text-primary">$842.100</p>
-          </div>
-        </div>
-        <div>
-          <div class="flex justify-between text-[0.6875rem] font-bold text-on-surface-variant mb-2">
-            <span>Progreso Visual</span>
-            <span>100%</span>
-          </div>
-          <div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div class="h-full bg-tertiary rounded-full" style="width:100%"></div>
-          </div>
-        </div>
-      </article>
+            <div>
+              <div class="flex justify-between text-[0.6875rem] font-bold text-on-surface-variant mb-2">
+                <span>Progreso Visual</span>
+                <span>—</span>
+              </div>
+              <div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                <div class="h-full bg-primary rounded-full" style="width:0%"></div>
+              </div>
+            </div>
+          </article>
+        ))
+      )}
     </div>
   </main>
 
   <!-- Floating Action Button (FAB) -->
-  <button class="fixed right-6 bottom-24 w-14 h-14 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-2xl shadow-lg flex items-center justify-center active:scale-95 transition-all z-50">
+  <button class="fixed right-6 bottom-24 w-14 h-14 bg-linear-to-br from-primary to-primary-container text-on-primary rounded-2xl shadow-lg flex items-center justify-center active:scale-95 transition-all z-50">
     <span class="material-symbols-outlined" style="font-size:28px">add</span>
   </button>
 
   <!-- BottomNavBar -->
   <nav class="fixed bottom-0 w-full z-50 rounded-t-2xl bg-white shadow-[0_-8px_32px_rgba(13,28,47,0.06)] border-t border-outline-variant/15 flex justify-around items-center h-20 px-4 pb-safe">
-    <div class="flex flex-col items-center justify-center text-[#434655] px-5 py-2">
+    <div class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2">
       <span class="material-symbols-outlined">dashboard</span>
       <span class="text-[10px] uppercase tracking-widest font-bold mt-1">Panel</span>
     </div>
@@ -167,14 +161,139 @@ import "../styles/global.css";
       <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">architecture</span>
       <span class="text-[10px] uppercase tracking-widest font-bold mt-1">Proyectos</span>
     </div>
-    <div class="flex flex-col items-center justify-center text-[#434655] px-5 py-2">
+    <div class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2">
       <span class="material-symbols-outlined">request_quote</span>
       <span class="text-[10px] uppercase tracking-widest font-bold mt-1">Valuaciones</span>
     </div>
-    <div class="flex flex-col items-center justify-center text-[#434655] px-5 py-2">
+    <div class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2">
       <span class="material-symbols-outlined">menu_book</span>
       <span class="text-[10px] uppercase tracking-widest font-bold mt-1">Libro</span>
     </div>
   </nav>
+
+  <!-- Modal: project actions -->
+  <div id="project-menu-modal" class="hidden fixed inset-0 z-50 items-end sm:items-center justify-center">
+    <div id="modal-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div id="modal-panel" class="relative w-full sm:max-w-sm bg-surface p-4 rounded-t-2xl sm:rounded-2xl mx-4 mb-6 sm:mb-0 shadow-xl ring-1 ring-black/5 opacity-0 translate-y-6 scale-95 transition-all duration-200 ease-out">
+      <header class="flex items-start justify-between gap-4 mb-3">
+        <div>
+          <h3 class="text-base font-semibold">Opciones del Proyecto</h3>
+          <p class="text-[12px] text-on-surface-variant mt-1">Selecciona una acción rápida para el proyecto seleccionado.</p>
+        </div>
+        <button id="modal-close" aria-label="Cerrar menú" class="text-on-surface-variant hover:text-on-surface transition-colors">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+
+      <nav aria-label="Acciones de proyecto">
+        <ul class="grid gap-2">
+          <li>
+            <button id="modal-edit" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-surface-container-lowest transition-colors">
+              <span class="material-symbols-outlined text-primary">edit</span>
+              <div class="text-left">
+                <div class="font-medium text-on-surface">Editar</div>
+                <div class="text-[12px] text-on-surface-variant">Modifica los datos del proyecto</div>
+              </div>
+            </button>
+          </li>
+
+          <li>
+            <button id="modal-delete" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-error-container/10 transition-colors">
+              <span class="material-symbols-outlined text-error">delete</span>
+              <div class="text-left">
+                <div class="font-medium text-error">Eliminar</div>
+                <div class="text-[12px] text-on-surface-variant">Eliminará el proyecto (acción irreversible)</div>
+              </div>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <script type="module">
+    const modal = document.getElementById('project-menu-modal');
+    const backdrop = document.getElementById('modal-backdrop');
+    const panel = document.getElementById('modal-panel');
+    const btnEdit = document.getElementById('modal-edit');
+    const btnDelete = document.getElementById('modal-delete');
+    const btnClose = document.getElementById('modal-close');
+    let currentProjectId = null;
+
+    function openModal(projectId) {
+      currentProjectId = projectId;
+      // ensure modal is display:flex then reveal
+      modal.classList.add('flex');
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      // animate backdrop and panel
+      // ensure starting state
+      backdrop.classList.remove('opacity-100');
+      backdrop.classList.add('opacity-0');
+      panel.classList.remove('translate-y-0','opacity-100','scale-100');
+      panel.classList.add('translate-y-6','opacity-0','scale-95');
+      // allow DOM to paint then trigger to -> visible
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        panel.classList.remove('translate-y-6','opacity-0','scale-95');
+        panel.classList.add('translate-y-0','opacity-100','scale-100');
+      });
+    }
+
+    function closeModal() {
+      currentProjectId = null;
+      // animate out
+      backdrop.classList.remove('opacity-100');
+      backdrop.classList.add('opacity-0');
+      panel.classList.remove('translate-y-0','opacity-100','scale-100');
+      panel.classList.add('translate-y-6','opacity-0','scale-95');
+      // wait for transition end on panel before hiding container
+      const onEnd = (e) => {
+        if (e.target !== panel) return;
+        panel.removeEventListener('transitionend', onEnd);
+        // hide modal container and remove flex to avoid conflicting display utilities
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      };
+      panel.addEventListener('transitionend', onEnd);
+    }
+
+    // Delegate click for all more buttons
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.more-btn');
+      if (btn) {
+        const id = btn.getAttribute('data-project-id') || btn.dataset.projectId;
+        openModal(id);
+      }
+    });
+
+    backdrop.addEventListener('click', closeModal);
+    btnClose.addEventListener('click', closeModal);
+
+    btnEdit.addEventListener('click', () => {
+      if (!currentProjectId) return closeModal();
+      window.location.href = `/projects/${currentProjectId}/edit`;
+    });
+
+    btnDelete.addEventListener('click', async () => {
+      if (!currentProjectId) return closeModal();
+      const ok = confirm('Confirmar eliminación del proyecto ' + currentProjectId + '?');
+      if (!ok) return;
+      try {
+        alert('Proyecto eliminado (simulado): ' + currentProjectId);
+      } catch (err) {
+        console.error('Delete failed', err);
+        alert('Error al eliminar');
+      }
+      closeModal();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
 
 </body>
