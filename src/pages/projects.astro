@@ -318,6 +318,29 @@ function badgeIcon(status: unknown) {
         // ignore
       }
     })();
+    // Guard: wrap Element.append to filter undefined args and log caller stack
+    (function(){
+      try {
+        const _origAppend = Element.prototype.append;
+        Element.prototype.append = function(...nodes) {
+          try {
+            if (nodes.some(n => n === undefined)) {
+              console.warn('append called with undefined, filtering arguments', { thisElem: this, args: nodes });
+              try { console.warn(new Error('append stack').stack); } catch (e) {}
+              const filtered = nodes.filter(n => n !== undefined);
+              return _origAppend.apply(this, filtered);
+            }
+            return _origAppend.apply(this, nodes);
+          } catch (err) {
+            // if original append still fails, rethrow for visibility
+            console.error('append wrapper error', err);
+            throw err;
+          }
+        };
+      } catch (e) {
+        // ignore
+      }
+    })();
     // Read initial projects from URI-encoded JSON blob and decode safely
     const __projectsEncEl = document.getElementById('projects-json-enc');
     try {
