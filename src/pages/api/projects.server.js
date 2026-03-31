@@ -2,87 +2,11 @@ import { query, transaction } from '../../lib/db.js';
 
 export const prerender = false;
 
-function unauthorizedResponse() {
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-}
-
 function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-async function checkAuth(request) {
-  const apiToken = process.env.API_TOKEN;
-  if (!apiToken) return { ok: false, res: new Response(JSON.stringify({ error: 'API_TOKEN not configured on server' }), { status: 500, headers: { 'Content-Type': 'application/json' } }) };
-  const header = request.headers.get('x-api-token');
-  const url = new URL(request.url);
-  const tokenParam = url.searchParams.get('token');
-  const provided = header || tokenParam;
-  if (!provided || provided !== apiToken) return { ok: false, res: unauthorizedResponse() };
-  return { ok: true };
-}
-
-export async function GET({ request }) {
-  const auth = await checkAuth(request);
-  if (!auth.ok) return auth.res;
-
-  const url = new URL(request.url);
-
-  // Pagination
-  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
-  const per_page = Math.min(100, Math.max(1, Number(url.searchParams.get('per_page')) || 20));
-  const offset = (page - 1) * per_page;
-
-  // Filters
-  const status = url.searchParams.get('status');
-  const client = url.searchParams.get('client');
-
-  // Sorting
-  const sort = url.searchParams.get('sort') || 'start_date';
-  const dir = (url.searchParams.get('dir') || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-  const allowedSort = ['start_date', 'created_at', 'updated_at'];
-  const orderBy = allowedSort.includes(sort) ? sort : 'start_date';
-
-  // Build SQL
-  const where = ['deleted_at IS NULL'];
-  const params = [];
-  if (status) {
-    where.push('status = ?');
-    params.push(status);
-  }
-  if (client) {
-    where.push('client LIKE ?');
-    params.push(`%${client}%`);
-  }
-
-  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-
-  try {
-    // total count
-    const countSql = `SELECT COUNT(*) AS total FROM projects ${whereClause}`;
-    const countRows = await query(countSql, params);
-    const total = countRows?.[0]?.total || 0;
-
-    const sql = `SELECT id, external_id, name, slug, description, client, owner_user_id, status, budget_amount, currency, start_date, end_date, metadata, is_active, created_at, updated_at FROM projects ${whereClause} ORDER BY ${orderBy} ${dir} LIMIT ? OFFSET ?`;
-    const dataParams = params.slice();
-    dataParams.push(per_page, offset);
-
-    const rows = await query(sql, dataParams);
-
-    // parse metadata JSON if not already parsed
-    const parsed = rows.map(r => ({ ...r, metadata: r.metadata ? r.metadata : null }));
-
-    const meta = { total, page, per_page };
-    return jsonResponse({ data: parsed, meta }, 200);
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500);
-  }
-}
-
-// Create new project
 export async function POST({ request }) {
-  const auth = await checkAuth(request);
-  if (!auth.ok) return auth.res;
-
   try {
     const body = await request.json();
     if (!body || !body.name) return jsonResponse({ error: 'Missing required field: name' }, 400);
@@ -94,7 +18,6 @@ export async function POST({ request }) {
     ];
 
     const values = insertFields.map(f => body[f] ?? null);
-    // metadata should be JSON string if object
     if (body.metadata && typeof body.metadata !== 'string') values[10] = JSON.stringify(body.metadata);
 
     const placeholders = insertFields.map(() => '?').join(',');
@@ -113,11 +36,7 @@ export async function POST({ request }) {
   }
 }
 
-// Update project (expects `id` in body)
 export async function PUT({ request }) {
-  const auth = await checkAuth(request);
-  if (!auth.ok) return auth.res;
-
   try {
     const body = await request.json();
     const id = body?.id;
@@ -149,11 +68,7 @@ export async function PUT({ request }) {
   }
 }
 
-// Soft-delete project (expects id param or body)
 export async function DELETE({ request }) {
-  const auth = await checkAuth(request);
-  if (!auth.ok) return auth.res;
-
   try {
     const url = new URL(request.url);
     const idFromQuery = url.searchParams.get('id');

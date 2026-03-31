@@ -1,0 +1,200 @@
+---
+import "../styles/global.css";
+---
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architectural Ledger - Partidas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+
+<body class="text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed pb-32 bg-background">
+  <!-- TopAppBar -->
+  <header class="flex justify-between items-center w-full px-4 h-16 sticky top-0 z-50 bg-surface border-b border-outline-variant/15">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30">
+        <img class="w-full h-full object-cover" alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlPirDZcj75snlguhITfG5pIfPAbnOSLbD5oBJZXCjZYcrprp-fNBEJQeQVVt4ajeL3qzamT4cu1mq_CjTg9nxYaFU76NjJTQDSEXoErO66ZE3WD0Weau7dqgu4KcSO9BGT_N_FSI1R33reXb4W2x7R4oHdnlnfBs6FDur5wbnhkGIrljxcorxL8q-_m_PmAO__NvZw9sG-KyOjP0j6-QdonmTaDXYodNbR8mt3WWKNFtFl3dUQfNa2zeJX8otRgzv9ujRzbdjhwbW" />
+      </div>
+      <span class="text-lg font-bold tracking-tighter text-primary">Architectural Ledger</span>
+    </div>
+    <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors">
+      <span class="material-symbols-outlined text-primary">notifications</span>
+    </button>
+  </header>
+
+  <main class="pt-4">
+    <!-- Sticky Summary Card -->
+    <div class="sticky top-16 z-40 px-4 py-3 bg-surface/80 backdrop-blur-md">
+      <div class="bg-linear-to-br from-primary to-primary-container p-5 rounded-xl shadow-lg">
+        <div class="flex justify-between items-start mb-1">
+          <span class="text-[10px] font-medium uppercase tracking-wider text-on-primary">LIBRO ESTIMADO TOTAL</span>
+          <span class="material-symbols-outlined text-on-primary text-lg">account_balance_wallet</span>
+        </div>
+        <div class="text-3xl font-extrabold text-white tracking-tighter mb-4">$1,482,900.50 <span class="text-sm font-normal text-on-primary ml-1">USD</span></div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 bg-white/10 rounded-full text-[10px] font-semibold text-white uppercase">PROYECTO CP-240</span>
+          <span class="text-[10px] font-medium text-on-primary italic">Actualizado hace 2h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Header -->
+    <div class="px-4 mt-4 mb-4 flex justify-between items-end">
+      <div>
+        <h2 class="text-xl font-bold text-on-surface tracking-tight">Partidas del Proyecto</h2>
+        <p class="text-xs text-on-surface-variant">Desglose detallado de partidas activas</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-low border border-outline-variant/15 text-on-surface-variant"><span class="material-symbols-outlined text-lg">filter_list</span></button>
+        <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-low border border-outline-variant/15 text-on-surface-variant"><span class="material-symbols-outlined text-lg">search</span></button>
+      </div>
+    </div>
+
+    <!-- Ledger Cards List -->
+    <div class="px-4 space-y-3">
+      <!-- Card Item 1 -->
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/5">
+        <div class="flex justify-between items-start mb-3">
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary-fixed rounded uppercase tracking-wider">ST-001</span>
+            <h3 class="text-sm font-semibold text-on-surface">Subestructura de Concreto Reforzado</h3>
+          </div>
+          <button class="text-on-surface-variant/40"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+        <div class="grid grid-cols-2 gap-y-3 gap-x-4 border-t border-outline-variant/10 pt-3">
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Unidad</p>
+            <p class="text-xs font-semibold">m3</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Cantidad</p>
+            <p class="text-xs font-semibold tabular-nums">450.00</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">P.U.</p>
+            <p class="text-xs font-semibold tabular-nums">$850.00</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-primary uppercase tracking-widest font-bold">Total</p>
+            <p class="text-sm font-bold text-primary tabular-nums">$382,500.00</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Item 2 -->
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/5">
+        <div class="flex justify-between items-start mb-3">
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary-fixed rounded uppercase tracking-wider">EW-014</span>
+            <h3 class="text-sm font-semibold text-on-surface">Excavación Masiva y Terracerías</h3>
+          </div>
+          <button class="text-on-surface-variant/40"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+        <div class="grid grid-cols-2 gap-y-3 gap-x-4 border-t border-outline-variant/10 pt-3">
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Unidad</p>
+            <p class="text-xs font-semibold">m3</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Cantidad</p>
+            <p class="text-xs font-semibold tabular-nums">1,200.00</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">P.U.</p>
+            <p class="text-xs font-semibold tabular-nums">$145.50</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-primary uppercase tracking-widest font-bold">Total</p>
+            <p class="text-sm font-bold text-primary tabular-nums">$174,600.00</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Item 3 -->
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/5">
+        <div class="flex justify-between items-start mb-3">
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary-fixed rounded uppercase tracking-wider">SF-202</span>
+            <h3 class="text-sm font-semibold text-on-surface">Estructura Metálica (N3)</h3>
+          </div>
+          <button class="text-on-surface-variant/40"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+        <div class="grid grid-cols-2 gap-y-3 gap-x-4 border-t border-outline-variant/10 pt-3">
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Unidad</p>
+            <p class="text-xs font-semibold">Ton</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Cantidad</p>
+            <p class="text-xs font-semibold tabular-nums">85.00</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">P.U.</p>
+            <p class="text-xs font-semibold tabular-nums">$2,400.00</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-primary uppercase tracking-widest font-bold">Total</p>
+            <p class="text-sm font-bold text-primary tabular-nums">$204,000.00</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Item 4 -->
+      <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/5">
+        <div class="flex justify-between items-start mb-3">
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary-fixed rounded uppercase tracking-wider">MEP-401</span>
+            <h3 class="text-sm font-semibold text-on-surface">Instalación de Ductos HVAC</h3>
+          </div>
+          <button class="text-on-surface-variant/40"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+        <div class="grid grid-cols-2 gap-y-3 gap-x-4 border-t border-outline-variant/10 pt-3">
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Unidad</p>
+            <p class="text-xs font-semibold">Pie Lineal</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">Cantidad</p>
+            <p class="text-xs font-semibold tabular-nums">2,850.00</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">P.U.</p>
+            <p class="text-xs font-semibold tabular-nums">$42.75</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-primary uppercase tracking-widest font-bold">Total</p>
+            <p class="text-sm font-bold text-primary tabular-nums">$121,837.50</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Floating Action Button (FAB) -->
+  <button class="fixed right-6 bottom-24 ledger-gradient w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl z-50 active:scale-90 transition-transform">
+    <span class="material-symbols-outlined text-3xl">add</span>
+  </button>
+
+  <!-- BottomNavBar -->
+  <nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe pt-2 bg-white/80 backdrop-blur-xl rounded-t-2xl shadow-[0_-8px_32px_rgba(13,28,47,0.06)] border-t border-outline-variant/15">
+    <a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1.5 hover:text-primary active:scale-95 transition-all" href="/dashboard">
+      <span class="material-symbols-outlined">dashboard</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Panel</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1.5 hover:text-primary active:scale-95 transition-all" href="/projects">
+      <span class="material-symbols-outlined">architecture</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Proyectos</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1.5 hover:text-primary active:scale-95 transition-all" href="/valuations">
+      <span class="material-symbols-outlined">assignment_turned_in</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Valuaciones</span>
+    </a>
+    <a class="flex flex-col items-center justify-center bg-primary-fixed text-primary px-3 py-1.5 rounded-xl active:scale-95 transition-all" href="/ledger">
+      <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+      <span class="text-[10px] font-medium uppercase tracking-wider mt-1">Libro</span>
+    </a>
+  </nav>
+
+</body>
