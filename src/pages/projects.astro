@@ -300,6 +300,24 @@ function badgeIcon(status: unknown) {
   <script id="projects-json-enc" type="application/json" set:html={PROJECTS_ENCODE}></script>
 
   <script type="module">
+    // Guard: ensure slot.assignedNodes never returns undefined entries
+    (function(){
+      try {
+        if (typeof HTMLSlotElement !== 'undefined' && HTMLSlotElement.prototype.assignedNodes) {
+          const _origAssignedNodes = HTMLSlotElement.prototype.assignedNodes;
+          HTMLSlotElement.prototype.assignedNodes = function(opts) {
+            try {
+              const res = _origAssignedNodes.call(this, opts) || [];
+              return Array.isArray(res) ? res.filter(Boolean) : [];
+            } catch (e) {
+              return [];
+            }
+          };
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
     // Read initial projects from URI-encoded JSON blob and decode safely
     const __projectsEncEl = document.getElementById('projects-json-enc');
     try {
