@@ -50,14 +50,13 @@
   --color-surface-container-high: #dde9ff;
   --color-surface: #f8f9ff;
   --color-on-tertiary: #ffffff;
-  
+
   --radius-sm: 0.125rem;
   --radius-md: 0.25rem;
   --radius-lg: 0.5rem;
 }
 
-/* Utility classes that map token names to CSS classes so
-   bg-[var(--color-...)] can be replaced by bg-token-name classes */
+/* Utility classes mapping token variables to tailwind-like names */
 
 /* Backgrounds */
 .bg-primary { background-color: var(--color-primary) !important; }
@@ -80,6 +79,7 @@
 .bg-surface-tint { background-color: var(--color-surface-tint) !important; }
 .bg-error { background-color: var(--color-error) !important; }
 .bg-error-container { background-color: var(--color-error-container) !important; }
+.bg-surface-container-low-95 { background-color: rgba(239,244,255,0.95) !important; }
 
 /* Text colors */
 .text-on-primary { color: var(--color-on-primary) !important; }
@@ -97,6 +97,4 @@
 .border-outline { border-color: var(--color-outline) !important; }
 .border-outline-variant { border-color: var(--color-outline-variant) !important; }
 
-/* Helper opacity variant for surface container low 95% */
-.bg-surface-container-low-95 { background-color: rgba(239,244,255,0.95) !important; }
 
