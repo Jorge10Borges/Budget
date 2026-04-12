@@ -114,13 +114,16 @@ const projects = [
               <div>Inicio: {p.start_date}</div>
               <div>Última actividad: {p.last_activity}</div>
             </div>
-            <div class="flex items-center gap-2">
-              <button aria-label="Ver" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer">
-                <span class="material-symbols-outlined">visibility</span>
-              </button>
-              <button aria-label="Editar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer">
-                <span class="material-symbols-outlined">edit</span>
-              </button>
+                <div class="flex items-center gap-2">
+                  <button aria-label="Ver" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                  <button aria-label="Editar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button aria-label="Eliminar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
             </div>
           </div>
         </article>
@@ -202,11 +205,13 @@ const projects = [
                 <div>Última actividad: ${last_activity}</div>
               </div>
               <div class="flex items-center gap-2">
-                <button aria-label="Ver" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer">
+                <button aria-label="Ver" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
                   <span class="material-symbols-outlined">visibility</span>
+                  <span class="ml-2 text-xs text-on-surface-variant">Ver</span>
                 </button>
-                <button aria-label="Editar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer">
+                <button aria-label="Editar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
                   <span class="material-symbols-outlined">edit</span>
+                  <span class="ml-2 text-xs text-on-surface-variant">Editar</span>
                 </button>
               </div>
             </div>
