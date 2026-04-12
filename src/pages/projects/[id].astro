@@ -100,17 +100,17 @@ export async function getStaticPaths() {
             </div>
 
             <!-- Expenses KPI (red accent) -->
-            <div class="bg-gradient-to-br from-error to-error-container p-4 rounded-xl text-on-error shadow-sm flex flex-col justify-between">
+            <div class="bg-gradient-to-br from-on-error-container to-error-container p-4 rounded-xl text-on-error shadow-sm flex flex-col justify-between">
               <div class="flex items-start justify-between">
                 <div>
-                  <div class="text-[10px] font-medium uppercase text-on-error-container">Gastos</div>
+                  <div class="text-[10px] font-medium uppercase text-white">Gastos</div>
                   <div id="kpi-expenses-total" class="text-2xl font-extrabold mt-2">—</div>
                 </div>
-                <span class="material-symbols-outlined text-on-error">receipt_long</span>
+                <span class="material-symbols-outlined text-white">receipt_long</span>
               </div>
-              <div class="mt-3 text-sm text-on-error-container flex items-center justify-between">
+              <div class="mt-3 text-sm text-white/90 flex items-center justify-between">
                 <div id="kpi-expenses-closed">Cerrados: —</div>
-                <a href="/projects/${p.id}/expenses" class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-on-error">Ver gastos</a>
+                <a href="/projects/${p.id}/expenses" class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Ver gastos</a>
               </div>
             </div>
 
@@ -143,11 +143,20 @@ export async function getStaticPaths() {
               </div>
             </div>
 
-            <div class="mt-3">
-              <div class="text-xs text-on-surface-variant mb-1">Gastado · ${spentPct}%</div>
-              <div class="w-full h-3 rounded-md bg-surface-dim overflow-hidden">
-                <div class="h-3 bg-error" style="width: ${spentPct}%"></div>
-              </div>
+            <div class="mt-4">
+              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md flex items-center gap-2">
+                <span class="material-symbols-outlined">widgets</span>
+                Ver partidas
+              </a>
+              <a href="/projects/${p.id}/valuations" class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2 flex items-center gap-2">
+                <span class="material-symbols-outlined">assignment_turned_in</span>
+                Ver valuaciones
+              </a>
+              <a href="/projects/${p.id}/expenses/new" class="px-3 py-2 ml-2 border border-outline-variant rounded-md flex items-center gap-2">
+                <span class="material-symbols-outlined">receipt_long</span>
+                Ver gastos
+              </a>
+            </div>
             </div>
           </div>
 
@@ -157,10 +166,10 @@ export async function getStaticPaths() {
             <div class="text-xs text-on-surface-variant mt-3">Última actividad</div>
             <div class="font-medium">${p.last_activity ?? p.lastActivity ?? ''}</div>
 
-            <div class="mt-4">
-              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md">Ver partidas</a>
-              <button class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2">Agregar valuación</button>
-              <button class="px-3 py-2 ml-2 border border-outline-variant rounded-md">Agregar gasto</button>
+            <div class="mt-4 flex items-center gap-2 justify-center">
+              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md text-center">Ver partidas</a>
+              <a href="/projects/${p.id}/valuations" class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2 text-center">Ver valuaciones</a>
+              <a href="/projects/${p.id}/expenses/new" class="px-3 py-2 ml-2 border border-outline-variant rounded-md text-center">Ver gastos</a>
             </div>
           </div>
         </section>
