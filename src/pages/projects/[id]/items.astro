@@ -13,7 +13,7 @@ export async function getStaticPaths() { return []; }
   <NavBarDesktop />
 
   <main class="pt-24 px-6 max-w-4xl mx-auto">
-    <a href="/projects/${projectId}" class="text-sm text-primary">← Volver al proyecto</a>
+    <a href={`/projects/${projectId}`} class="text-sm text-primary">← Volver al proyecto</a>
     <h1 class="text-2xl font-bold mt-4">Partidas asignadas</h1>
 
     <div id="items-root" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10">
