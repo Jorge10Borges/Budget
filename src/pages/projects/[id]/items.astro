@@ -12,7 +12,7 @@ export async function getStaticPaths() { return []; }
 <MainLayout>
   <NavBarDesktop />
 
-  <main class="pt-24 px-6 max-w-4xl mx-auto">
+  <main class="pt-24 px-6 container mx-auto">
     <a href="/projects/${projectId}" class="text-sm text-primary">← Volver al proyecto</a>
     <h1 class="text-2xl font-bold mt-4">Partidas asignadas</h1>
 
@@ -48,17 +48,18 @@ export async function getStaticPaths() { return []; }
       }
       const fmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       let total = 0;
-      const rows = items.map(it => {
+      const rows = items.map((it, idx) => {
+        const rowBg = idx % 2 === 0 ? 'bg-surface-container-low' : 'bg-surface-container-high';
         const qty = Number(it.qty || 0);
         const unitCost = Number(it.unit_cost || 0);
         const totalCost = Number(it.total_cost || (qty * unitCost) || 0);
         total += totalCost;
-        return `<tr class="border-b border-outline-variant/10">
-          <td class="px-3 py-1 align-top text-sm">${it.item_name || it.item_id}</td>
-          <td class="px-3 py-1 align-top text-sm">${it.unit || ''}</td>
-          <td class="px-3 py-1 align-top text-sm text-right">${qty}</td>
-          <td class="px-3 py-1 align-top text-sm text-right">${fmt.format(unitCost)}</td>
-          <td class="px-3 py-1 align-top text-sm text-right font-medium">${fmt.format(totalCost)}</td>
+        return `<tr class="${rowBg} border-b border-outline-variant/10 hover:bg-surface-dim cursor-pointer" data-row-index="${idx}">
+          <td class="px-3 py-1 align-top text-sm border-r border-outline-variant/10">${it.item_name || it.item_id}</td>
+          <td class="px-3 py-1 align-top text-sm border-r border-outline-variant/10">${it.unit || ''}</td>
+          <td class="px-3 py-1 align-top text-sm text-right border-r border-outline-variant/10">${qty}</td>
+          <td class="px-3 py-1 align-top text-sm text-right border-r border-outline-variant/10">${fmt.format(unitCost)}</td>
+          <td class="px-3 py-1 align-top text-sm text-right border-r border-outline-variant/10 font-medium">${fmt.format(totalCost)}</td>
           <td class="px-3 py-1 align-top text-sm text-right">
             <button class="p-1 rounded hover:bg-surface-dim text-on-surface" title="Editar">
               <span class="material-symbols-outlined">edit</span>
@@ -80,7 +81,7 @@ export async function getStaticPaths() { return []; }
               <col />
               <col />
               <col />
-              <col style="width:96px" />
+              <col style="width:128px" />
             </colgroup>
             <thead>
               <tr class="text-xs text-on-surface-variant">
@@ -106,6 +107,40 @@ export async function getStaticPaths() { return []; }
         </div>
       `;
     }
+
+      // después de renderizar, añadir comportamiento de selección y estilos dinámicos
+      setTimeout(() => {
+        const tbl = root.querySelector('table');
+        if (!tbl) return;
+        tbl.classList.add('items-table');
+
+        // inyectar estilo CSS específico (una sola vez)
+        if (!document.getElementById('items-table-styles')) {
+          const s = document.createElement('style');
+          s.id = 'items-table-styles';
+          s.textContent = `
+            .items-table tr.selected { background-color: rgba(14,165,233,0.08) !important; }
+            .items-table tr:hover { filter: brightness(0.985); }
+            .items-table td { vertical-align: top; }
+          `;
+          document.head.appendChild(s);
+        }
+
+        const tbody = tbl.querySelector('tbody');
+        if (!tbody) return;
+        let selectedIdx = null;
+        tbody.querySelectorAll('tr[data-row-index]').forEach(tr => {
+          tr.addEventListener('click', () => {
+            const idx = tr.dataset.rowIndex;
+            if (selectedIdx !== null) {
+              const prev = tbody.querySelector(`tr[data-row-index="${selectedIdx}"]`);
+              if (prev) prev.classList.remove('selected');
+            }
+            tr.classList.add('selected');
+            selectedIdx = idx;
+          });
+        });
+      }, 20);
 
     loadItems();
   </script>
