@@ -35,7 +35,18 @@ $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 try {
     if ($method === 'GET') {
         if ($id) {
-            $stmt = $mysqli->prepare('SELECT * FROM projects WHERE id = ? LIMIT 1');
+            // Return single project with calculated budget from project_items
+            $sql = "SELECT p.*, COALESCE(t.calc_budget, 0) AS calculated_budget
+                    FROM projects p
+                    LEFT JOIN (
+                        SELECT pi.project_id,
+                               SUM(COALESCE(pi.total_cost, pi.qty * COALESCE(pi.unit_cost, i.unit_cost))) AS calc_budget
+                        FROM project_items pi
+                        LEFT JOIN items i ON i.id = pi.item_id
+                        GROUP BY pi.project_id
+                    ) t ON t.project_id = p.id
+                    WHERE p.id = ? LIMIT 1";
+            $stmt = $mysqli->prepare($sql);
             $stmt->bind_param('i', $id);
             $stmt->execute();
             $res = $stmt->get_result();
@@ -46,7 +57,21 @@ try {
         } else {
             $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
             $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
-            $stmt = $mysqli->prepare('SELECT id, external_id, name, description, client, owner_user_id, status, budget_amount, currency, start_date, end_date, is_active, created_at, updated_at FROM projects WHERE deleted_at IS NULL ORDER BY id DESC LIMIT ? OFFSET ?');
+            // List projects with calculated budget
+            $sql = "SELECT p.id, p.external_id, p.name, p.description, p.client, p.owner_user_id, p.status,
+                           COALESCE(t.calc_budget, 0) AS calculated_budget, p.currency, p.start_date, p.end_date, p.is_active, p.created_at, p.updated_at
+                    FROM projects p
+                    LEFT JOIN (
+                        SELECT pi.project_id,
+                               SUM(COALESCE(pi.total_cost, pi.qty * COALESCE(pi.unit_cost, i.unit_cost))) AS calc_budget
+                        FROM project_items pi
+                        LEFT JOIN items i ON i.id = pi.item_id
+                        GROUP BY pi.project_id
+                    ) t ON t.project_id = p.id
+                    WHERE p.deleted_at IS NULL
+                    ORDER BY p.id DESC
+                    LIMIT ? OFFSET ?";
+            $stmt = $mysqli->prepare($sql);
             $stmt->bind_param('ii', $limit, $offset);
             $stmt->execute();
             $res = $stmt->get_result();
@@ -71,16 +96,14 @@ try {
         $client = isset($data['client']) ? $data['client'] : null;
         $owner_user_id = isset($data['owner_user_id']) ? (int)$data['owner_user_id'] : null;
         $status = isset($data['status']) ? $data['status'] : 'draft';
-        $budget_amount = isset($data['budget_amount']) ? $data['budget_amount'] : 0.00;
         $currency = isset($data['currency']) ? $data['currency'] : 'USD';
         $start_date = isset($data['start_date']) ? $data['start_date'] : null;
         $end_date = isset($data['end_date']) ? $data['end_date'] : null;
         $metadata = isset($data['metadata']) ? $data['metadata'] : null;
-
-        $stmt = $mysqli->prepare('INSERT INTO projects (external_id, name, description, client, owner_user_id, status, budget_amount, currency, start_date, end_date, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        // types: s s s s i s d s s s s
-        $types = 'ssssisdssss';
-        $bind = [$types, $external_id, $name, $description, $client, $owner_user_id, $status, $budget_amount, $currency, $start_date, $end_date, $metadata];
+        $stmt = $mysqli->prepare('INSERT INTO projects (external_id, name, description, client, owner_user_id, status, currency, start_date, end_date, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        // types: external_id(s), name(s), description(s), client(s), owner_user_id(i), status(s), currency(s), start_date(s), end_date(s), metadata(s)
+        $types = 'ssssisssss';
+        $bind = [$types, $external_id, $name, $description, $client, $owner_user_id, $status, $currency, $start_date, $end_date, $metadata];
         call_user_func_array([$stmt, 'bind_param'], refValues($bind));
         $ok = $stmt->execute();
         if (!$ok) {
@@ -100,7 +123,7 @@ try {
         $data = get_json_body();
         $fields = [];
         $values = [];
-        $allowed = ['external_id','name','description','client','owner_user_id','status','budget_amount','currency','start_date','end_date','metadata','is_active'];
+        $allowed = ['external_id','name','description','client','owner_user_id','status','currency','start_date','end_date','metadata','is_active'];
         foreach ($allowed as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = "$f = ?";

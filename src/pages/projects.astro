@@ -88,7 +88,7 @@ import NavBarMobil from '../components/NavBarMobil.astro';
       const container = document.getElementById('projects-grid');
       if (!container) return;
       container.innerHTML = projects.map(p => {
-        const budget = Number(p.budget ?? p.budget_amount ?? 0);
+        const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
         const collected = Number(p.collected ?? 0);
         const spent = Number(p.spent ?? 0);
         const collectedPct = budget ? Math.min(100, Math.round((collected / budget) * 100)) : 0;

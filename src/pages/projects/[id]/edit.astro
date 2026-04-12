@@ -54,11 +54,7 @@ export async function getStaticPaths() {
             <label class="text-xs text-on-surface-variant">Cliente</label>
             <input name="client" value="${p.client ?? ''}" class="w-full px-3 py-2 rounded-md border bg-surface-container-low" />
           </div>
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <label class="text-xs text-on-surface-variant">Presupuesto</label>
-              <input name="budget" type="number" value="${p.budget ?? p.budget_amount ?? 0}" class="w-full px-3 py-2 rounded-md border bg-surface-container-low" />
-            </div>
+          <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="text-xs text-on-surface-variant">Cobrado</label>
               <input name="collected" type="number" value="${p.collected ?? 0}" class="w-full px-3 py-2 rounded-md border bg-surface-container-low" />
