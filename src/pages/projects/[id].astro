@@ -142,24 +142,9 @@ export async function getStaticPaths() {
                 <div class="h-3 bg-primary" style="width: ${collectedPct}%"></div>
               </div>
             </div>
-
-            <div class="mt-4">
-              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md flex items-center gap-2">
-                <span class="material-symbols-outlined">widgets</span>
-                Ver partidas
-              </a>
-              <a href="/projects/${p.id}/valuations" class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2 flex items-center gap-2">
-                <span class="material-symbols-outlined">assignment_turned_in</span>
-                Ver valuaciones
-              </a>
-              <a href="/projects/${p.id}/expenses/new" class="px-3 py-2 ml-2 border border-outline-variant rounded-md flex items-center gap-2">
-                <span class="material-symbols-outlined">receipt_long</span>
-                Ver gastos
-              </a>
-            </div>
-            </div>
           </div>
-
+        </section>
+        <section class="mt-6">
           <div>
             <div class="text-xs text-on-surface-variant">Inicio</div>
             <div class="font-medium">${p.start_date ?? p.startDate ?? ''}</div>
@@ -167,9 +152,18 @@ export async function getStaticPaths() {
             <div class="font-medium">${p.last_activity ?? p.lastActivity ?? ''}</div>
 
             <div class="mt-4 flex items-center gap-2 justify-center">
-              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md text-center">Ver partidas</a>
-              <a href="/projects/${p.id}/valuations" class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2 text-center">Ver valuaciones</a>
-              <a href="/projects/${p.id}/expenses/new" class="px-3 py-2 ml-2 border border-outline-variant rounded-md text-center">Ver gastos</a>
+              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md text-center flex items-center justify-start gap-1 rounded-2xl">
+                <span class="material-symbols-outlined">widgets</span>
+                Ver partidas
+              </a>
+              <a href="/projects/${p.id}/valuations" class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2 text-center flex items-center justify-start gap-1 rounded-2xl">
+                <span class="material-symbols-outlined">assignment_turned_in</span>
+                Ver valuaciones
+              </a>
+              <a href="/projects/${p.id}/expenses/new" class="px-3 py-2 ml-2 border border-outline-variant rounded-md text-center flex items-center justify-start gap-1 rounded-2xl">
+                <span class="material-symbols-outlined">receipt_long</span>
+                Ver gastos
+              </a>
             </div>
           </div>
         </section>
