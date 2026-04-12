@@ -14,7 +14,7 @@ export async function getStaticPaths() {
 <MainLayout>
   <NavBarDesktop />
 
-  <main class="pt-24 px-6 max-w-3xl mx-auto">
+  <main class="pt-24 px-6 container mx-auto">
     <a href="/projects" class="text-sm text-primary">← Volver a proyectos</a>
     <div id="project-detail" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10">
       <div class="text-center text-on-surface-variant">Cargando proyecto...</div>
@@ -89,7 +89,8 @@ export async function getStaticPaths() {
             <div class="font-medium">${p.last_activity ?? p.lastActivity ?? ''}</div>
 
             <div class="mt-4">
-              <button class="px-3 py-2 bg-primary text-on-primary rounded-md">Agregar valuación</button>
+              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md">Ver partidas</a>
+              <button class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2">Agregar valuación</button>
               <button class="px-3 py-2 ml-2 border border-outline-variant rounded-md">Agregar gasto</button>
             </div>
           </div>
