@@ -89,9 +89,12 @@ export async function getStaticPaths() {
             <div class="font-medium">${p.last_activity ?? p.lastActivity ?? ''}</div>
 
             <div class="mt-4">
-              <a href="/projects/${p.id}/items" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md">Ver partidas</a>
+              <button id="toggle-items-btn" class="px-3 py-2 bg-surface-container-high text-on-surface rounded-md">Ver partidas</button>
               <button class="px-3 py-2 bg-primary text-on-primary rounded-md ml-2">Agregar valuación</button>
               <button class="px-3 py-2 ml-2 border border-outline-variant rounded-md">Agregar gasto</button>
+            </div>
+            <div id="project-items" class="mt-4 hidden bg-surface-container-low p-3 rounded-md border border-outline-variant/10">
+              <div class="text-on-surface-variant">Cargando partidas...</div>
             </div>
           </div>
         </section>
@@ -101,6 +104,91 @@ export async function getStaticPaths() {
           <p class="text-sm text-on-surface-variant mt-2">${p.description ?? p.desc ?? '—'}</p>
         </section>
       `;
+
+      // Attach toggle handler for partidas
+      setTimeout(() => {
+        const toggleBtn = document.getElementById('toggle-items-btn');
+        const itemsRoot = document.getElementById('project-items');
+        let itemsLoaded = false;
+        async function fetchItems() {
+          if (!p.id) return;
+          const _meta = document.querySelector('meta[name="api-base"]');
+          const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+          const url = `${_apiBase.replace(/\/$/, '')}/project_items.php?project_id=${p.id}`;
+          try {
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Fetch failed');
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : (data.data || []);
+            renderItemsTable(items, itemsRoot);
+            itemsLoaded = true;
+          } catch (e) {
+            console.error(e);
+            itemsRoot.innerHTML = '<div class="text-error">No se pudieron cargar las partidas.</div>';
+          }
+        }
+
+        function renderItemsTable(items, root) {
+          if (!items || items.length === 0) {
+            root.innerHTML = '<div class="text-on-surface-variant">No hay partidas asignadas a este proyecto.</div>';
+            return;
+          }
+          const fmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          let total = 0;
+          const rows = items.map(it => {
+            const qty = Number(it.qty || 0);
+            const unitCost = Number(it.unit_cost || 0);
+            const totalCost = Number(it.total_cost || (qty * unitCost) || 0);
+            total += totalCost;
+            return `<tr class="border-b border-outline-variant/10">
+              <td class="px-3 py-2 text-sm">${it.item_name || it.item_id}</td>
+              <td class="px-3 py-2 text-sm">${it.unit || ''}</td>
+              <td class="px-3 py-2 text-sm text-right">${qty}</td>
+              <td class="px-3 py-2 text-sm text-right">${fmt.format(unitCost)}</td>
+              <td class="px-3 py-2 text-sm text-right font-medium">${fmt.format(totalCost)}</td>
+            </tr>`;
+          }).join('\n');
+
+          root.innerHTML = `
+            <div class="overflow-x-auto">
+              <table class="w-full table-fixed text-left">
+                <thead>
+                  <tr class="text-xs text-on-surface-variant">
+                    <th class="px-3 py-2">Partida</th>
+                    <th class="px-3 py-2">Unidad</th>
+                    <th class="px-3 py-2 text-right">Cantidad</th>
+                    <th class="px-3 py-2 text-right">Costo unit.</th>
+                    <th class="px-3 py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="px-3 py-2 text-sm font-semibold text-right">Total presupuestado</td>
+                    <td class="px-3 py-2 text-sm font-semibold text-right">${fmt.format(total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          `;
+        }
+
+        if (toggleBtn && itemsRoot) {
+          toggleBtn.addEventListener('click', async () => {
+            const isHidden = itemsRoot.classList.contains('hidden');
+            if (isHidden) {
+              itemsRoot.classList.remove('hidden');
+              toggleBtn.textContent = 'Ocultar partidas';
+              if (!itemsLoaded) await fetchItems();
+            } else {
+              itemsRoot.classList.add('hidden');
+              toggleBtn.textContent = 'Ver partidas';
+            }
+          });
+        }
+      }, 50);
     }
 
     loadProject();
