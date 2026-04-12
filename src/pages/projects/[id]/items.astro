@@ -108,7 +108,7 @@ export async function getStaticPaths() { return []; }
       `;
     }
 
-      // después de renderizar, añadir comportamiento de selección y estilos dinámicos
+      // después de renderizar, añadir comportamiento de selección, modal y estilos dinámicos
       setTimeout(() => {
         const tbl = root.querySelector('table');
         if (!tbl) return;
@@ -122,6 +122,8 @@ export async function getStaticPaths() { return []; }
             .items-table tr.selected { background-color: rgba(14,165,233,0.08) !important; }
             .items-table tr:hover { filter: brightness(0.985); }
             .items-table td { vertical-align: top; }
+            .items-table td.border-r { border-right: 1px solid rgba(13,28,47,0.08); }
+            .modal-open { overflow: hidden; }
           `;
           document.head.appendChild(s);
         }
@@ -129,8 +131,11 @@ export async function getStaticPaths() { return []; }
         const tbody = tbl.querySelector('tbody');
         if (!tbody) return;
         let selectedIdx = null;
+
+        // selección por fila (evitar clicks en botones)
         tbody.querySelectorAll('tr[data-row-index]').forEach(tr => {
-          tr.addEventListener('click', () => {
+          tr.addEventListener('click', (ev) => {
+            if (ev.target.closest('button')) return; // no seleccionar si se hizo click en botón
             const idx = tr.dataset.rowIndex;
             if (selectedIdx !== null) {
               const prev = tbody.querySelector(`tr[data-row-index="${selectedIdx}"]`);
@@ -140,10 +145,78 @@ export async function getStaticPaths() { return []; }
             selectedIdx = idx;
           });
         });
+
+        // Modal handlers: abrir al pulsar botón Editar
+        const modal = document.getElementById('edit-item-modal');
+        const form = document.getElementById('edit-item-form');
+        const inputQty = form ? form.querySelector('input[name="qty"]') : null;
+        const inputUnit = form ? form.querySelector('input[name="unit_cost"]') : null;
+        let editingRow = null;
+
+        tbody.querySelectorAll('button[title="Editar"]').forEach(btn => {
+          btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const tr = btn.closest('tr');
+            if (!tr) return;
+            editingRow = tr;
+            const d = tr.dataset;
+            if (inputQty) inputQty.value = d.qty ?? '';
+            if (inputUnit) inputUnit.value = d.unitCost ?? d.unitCost === undefined ? tr.dataset.unitCost : tr.dataset.unitCost;
+            // show modal
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.documentElement.classList.add('modal-open');
+          });
+        });
+
+        const closeModal = () => {
+          if (!modal) return;
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+          document.documentElement.classList.remove('modal-open');
+          editingRow = null;
+        };
+
+        const cancelBtn = document.getElementById('edit-item-cancel');
+        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!editingRow) return closeModal();
+            const newQty = Number(inputQty.value || 0);
+            const newUnit = Number(inputUnit.value || 0);
+            // actualizar dataset
+            editingRow.dataset.qty = newQty;
+            editingRow.dataset.unitCost = newUnit;
+            // actualizar celdas (cantidad = td index 2, costo unit = 3, total = 4)
+            const tds = editingRow.querySelectorAll('td');
+            if (tds && tds.length >= 5) {
+              tds[2].textContent = newQty;
+              tds[3].textContent = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(newUnit);
+              const newTotal = newQty * newUnit;
+              tds[4].textContent = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(newTotal);
+            }
+            // recalcular total footer
+            const allRows = tbody.querySelectorAll('tr[data-row-index]');
+            let sum = 0;
+            allRows.forEach(r => {
+              const cells = r.querySelectorAll('td');
+              if (cells && cells.length >= 5) {
+                const val = Number(cells[4].textContent.replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+                sum += val;
+              }
+            });
+            const footerTotal = root.querySelector('tfoot td:last-child');
+            if (footerTotal) footerTotal.textContent = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sum);
+
+            closeModal();
+            console.log('Edición (UI):', { itemId: editingRow.dataset.itemId, qty: newQty, unit_cost: newUnit });
+          });
+        }
       }, 20);
 
     loadItems();
-      loadItems();
   </script>
 
     <!-- Edit item modal (UI) -->
