@@ -5,7 +5,7 @@ import NavBarMobil from '../../../components/NavBarMobil.astro';
 
 export const prerender = false;
 
-const id = Astro.params.id;
+const id = (Astro.params as Record<string, string> | undefined)?.id ?? null;
 export async function getStaticPaths() {
   return [];
 }
