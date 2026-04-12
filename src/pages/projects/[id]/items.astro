@@ -54,16 +54,16 @@ export async function getStaticPaths() { return []; }
         const totalCost = Number(it.total_cost || (qty * unitCost) || 0);
         total += totalCost;
         return `<tr class="border-b border-outline-variant/10">
-          <td class="px-3 py-2 text-sm">${it.item_name || it.item_id}</td>
-          <td class="px-3 py-2 text-sm">${it.unit || ''}</td>
-          <td class="px-3 py-2 text-sm text-right">${qty}</td>
-          <td class="px-3 py-2 text-sm text-right">${fmt.format(unitCost)}</td>
-          <td class="px-3 py-2 text-sm text-right font-medium">${fmt.format(totalCost)}</td>
-          <td class="px-3 py-2 text-sm text-right">
-            <button class="p-2 rounded hover:bg-surface-dim text-on-surface" title="Editar">
+          <td class="px-3 py-1 align-top text-sm">${it.item_name || it.item_id}</td>
+          <td class="px-3 py-1 align-top text-sm">${it.unit || ''}</td>
+          <td class="px-3 py-1 align-top text-sm text-right">${qty}</td>
+          <td class="px-3 py-1 align-top text-sm text-right">${fmt.format(unitCost)}</td>
+          <td class="px-3 py-1 align-top text-sm text-right font-medium">${fmt.format(totalCost)}</td>
+          <td class="px-3 py-1 align-top text-sm text-right">
+            <button class="p-1 rounded hover:bg-surface-dim text-on-surface" title="Editar">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="p-2 rounded hover:bg-surface-dim text-error ml-2" title="Eliminar">
+            <button class="p-1 rounded hover:bg-surface-dim text-error ml-2" title="Eliminar">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </td>
@@ -84,12 +84,12 @@ export async function getStaticPaths() { return []; }
             </colgroup>
             <thead>
               <tr class="text-xs text-on-surface-variant">
-                <th class="px-3 py-2">Partida</th>
-                <th class="px-3 py-2">Unidad</th>
-                <th class="px-3 py-2 text-right">Cantidad</th>
-                <th class="px-3 py-2 text-right">Costo unit.</th>
-                <th class="px-3 py-2 text-right">Total</th>
-                <th class="px-3 py-2 text-right"><span class="sr-only">Acciones</span></th>
+                <th class="px-3 py-1">Partida</th>
+                <th class="px-3 py-1">Unidad</th>
+                <th class="px-3 py-1 text-right">Cantidad</th>
+                <th class="px-3 py-1 text-right">Costo unit.</th>
+                <th class="px-3 py-1 text-right">Total</th>
+                <th class="px-3 py-1 text-right"><span class="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -97,8 +97,8 @@ export async function getStaticPaths() { return []; }
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="5" class="px-3 py-2 text-sm font-semibold text-right">Total presupuestado</td>
-                <td class="px-3 py-2 text-sm font-semibold text-right">${fmt.format(total)}</td>
+                <td colspan="5" class="px-3 py-1 text-sm font-semibold text-right">Total presupuestado</td>
+                <td class="px-3 py-1 text-sm font-semibold text-right">${fmt.format(total)}</td>
               </tr>
             </tfoot>
           </table>
