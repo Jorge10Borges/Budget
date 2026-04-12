@@ -16,7 +16,7 @@ export async function getStaticPaths() { return []; }
     <a href="/projects/${projectId}" class="text-sm text-primary">← Volver al proyecto</a>
     <h1 class="text-2xl font-bold mt-4">Partidas asignadas</h1>
 
-    <div id="items-root" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-auto" style="max-height: calc(100vh - 220px);">
+    <div id="items-root" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-y-auto" style="max-height: calc(100vh - 220px);">
       <div class="text-on-surface-variant">Cargando partidas...</div>
     </div>
   </main>
@@ -72,8 +72,8 @@ export async function getStaticPaths() { return []; }
 
       root.innerHTML = `
         <div class="overflow-x-auto">
-          <div class="overflow-auto">
-          <table class="w-full min-w-[720px] table-fixed text-left">
+          <div class="overflow-x-auto">
+          <table class="w-full min-w-[900px] table-fixed text-left">
             <thead>
               <tr class="text-xs text-on-surface-variant">
                 <th class="px-3 py-2">Partida</th>
