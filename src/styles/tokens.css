@@ -1,8 +1,8 @@
 
 /* Utility helpers */
 
-:root {
-  /* Palette extracted from provided HTML (exact hex values) */
+@theme {
+    /* Palette extracted from provided HTML (exact hex values) */
   --color-error: #ba1a1a;
   --color-background: #f8f9ff;
   --color-surface-variant: #d5e3fd;
@@ -50,51 +50,22 @@
   --color-surface-container-high: #dde9ff;
   --color-surface: #f8f9ff;
   --color-on-tertiary: #ffffff;
-
+  
   --radius-sm: 0.125rem;
   --radius-md: 0.25rem;
   --radius-lg: 0.5rem;
 }
 
-/* Utility classes mapping token variables to tailwind-like names */
+/* Status colors */
+:root {
+  --color-success: #16a34a; /* verde */
+  --color-warning: #f59e0b; /* amarillo */
+  --color-info: var(--color-primary); /* azul (primario) */
+}
 
-/* Backgrounds */
-.bg-primary { background-color: var(--color-primary) !important; }
-.bg-primary-container { background-color: var(--color-primary-container) !important; }
-.bg-primary-fixed { background-color: var(--color-primary-fixed) !important; }
-.bg-primary-fixed-dim { background-color: var(--color-primary-fixed-dim) !important; }
-.bg-secondary { background-color: var(--color-secondary) !important; }
-.bg-secondary-container { background-color: var(--color-secondary-container) !important; }
-.bg-tertiary { background-color: var(--color-tertiary) !important; }
-.bg-tertiary-container { background-color: var(--color-tertiary-container) !important; }
-.bg-background { background-color: var(--color-background) !important; }
-.bg-surface { background-color: var(--color-surface) !important; }
-.bg-surface-bright { background-color: var(--color-surface-bright) !important; }
-.bg-surface-dim { background-color: var(--color-surface-dim) !important; }
-.bg-surface-container { background-color: var(--color-surface-container) !important; }
-.bg-surface-container-low { background-color: var(--color-surface-container-low) !important; }
-.bg-surface-container-lowest { background-color: var(--color-surface-container-lowest) !important; }
-.bg-surface-container-high { background-color: var(--color-surface-container-high) !important; }
-.bg-surface-container-highest { background-color: var(--color-surface-container-highest) !important; }
-.bg-surface-tint { background-color: var(--color-surface-tint) !important; }
-.bg-error { background-color: var(--color-error) !important; }
-.bg-error-container { background-color: var(--color-error-container) !important; }
-.bg-surface-container-low-95 { background-color: rgba(239,244,255,0.95) !important; }
-
-/* Text colors */
-.text-on-primary { color: var(--color-on-primary) !important; }
-.text-on-secondary { color: var(--color-on-secondary) !important; }
-.text-on-surface { color: var(--color-on-surface) !important; }
-.text-on-surface-variant { color: var(--color-on-surface-variant) !important; }
-.text-on-background { color: var(--color-on-background) !important; }
-.text-on-tertiary { color: var(--color-on-tertiary) !important; }
-.text-on-error { color: var(--color-on-error) !important; }
-.text-primary { color: var(--color-primary) !important; }
-.text-secondary { color: var(--color-secondary) !important; }
-.text-tertiary { color: var(--color-tertiary) !important; }
-
-/* Borders and outlines */
-.border-outline { border-color: var(--color-outline) !important; }
-.border-outline-variant { border-color: var(--color-outline-variant) !important; }
+/* Badge helper classes */
+.badge-active { background: var(--color-success); color: white; }
+.badge-draft { background: var(--color-info); color: white; }
+.badge-paused { background: var(--color-warning); color: rgba(0,0,0,0.85); }
 
 
