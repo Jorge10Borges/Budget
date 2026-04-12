@@ -1,0 +1,4 @@
+token,color,contrastAgainst,contrastRatio,AA_normal,AA_large,AAA_normal
+on-surface,#0d1c2f vs background #f8f9ff,background,#f8f9ff vs #0d1c2f,16.34,pass,pass,pass
+on-primary,#ffffff vs primary #003ca3,primary,#ffffff vs #003ca3,9.98,pass,pass,pass
+on-error,#ffffff vs error #ba1a1a,error,#ffffff vs #ba1a1a,6.47,pass,pass,fail
