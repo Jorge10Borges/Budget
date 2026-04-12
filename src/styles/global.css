@@ -24,3 +24,34 @@ body {
 .nav-active-mobile {
 	color: var(--color-primary) !important;
 }
+
+/* Active indicators */
+.nav-active-bg {
+	background-color: var(--color-primary-container) !important;
+	color: var(--color-on-primary) !important;
+	padding: 0.25rem 0.5rem;
+	border-radius: 0.5rem;
+}
+
+.nav-active-underline {
+	position: relative;
+}
+.nav-active-underline::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -6px;
+	height: 3px;
+	background-color: var(--color-primary);
+	border-radius: 2px;
+}
+
+/* Mobile active: small pill behind icon */
+.nav-active-mobile {
+	background-color: var(--color-primary-container) !important;
+	color: var(--color-on-primary) !important;
+	padding: 0.35rem 0.6rem !important;
+	border-radius: 9999px;
+}
+

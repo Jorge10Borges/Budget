@@ -19,7 +19,9 @@
       const path = location.pathname.replace(/\/$/, '') || '/';
       document.querySelectorAll('a[data-nav]').forEach(a=>{
         const target = a.getAttribute('data-nav');
-        if (target === path) a.classList.add('nav-active-mobile');
+        if (target === path) {
+          a.classList.add('nav-active-mobile');
+        }
       });
     } catch(e) {}
   })();
