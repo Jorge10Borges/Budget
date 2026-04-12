@@ -73,7 +73,15 @@ export async function getStaticPaths() { return []; }
       root.innerHTML = `
         <div class="overflow-x-auto">
           <div class="overflow-x-auto">
-          <table class="w-full min-w-[900px] table-fixed text-left">
+          <table class="w-full min-w-[900px] table-auto text-left">
+            <colgroup>
+              <col style="min-width:33%" />
+              <col />
+              <col />
+              <col />
+              <col />
+              <col style="width:96px" />
+            </colgroup>
             <thead>
               <tr class="text-xs text-on-surface-variant">
                 <th class="px-3 py-2">Partida</th>
