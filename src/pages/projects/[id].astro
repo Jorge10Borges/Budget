@@ -23,23 +23,44 @@ export async function getStaticPaths() {
 
   <script type="module">
     const container = document.getElementById('project-detail');
-    const projectId = container ? container.dataset.id : null;
     const _meta = document.querySelector('meta[name="api-base"]');
     const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
-    const apiUrl = `${_apiBase.replace(/\/$/, '')}/projects.php?id=${projectId}`;
+
+    function getProjectIdFromDOMorURL() {
+      const idFromDom = container ? container.dataset.id : null;
+      if (idFromDom) return idFromDom;
+      // fallback: extract from pathname /projects/:id
+      const m = window.location.pathname.match(/\/projects\/(\d+)/);
+      return m ? m[1] : null;
+    }
+
+    function makeApiUrl(id) {
+      return `${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(id)}`;
+    }
 
     async function loadProject() {
+      const id = getProjectIdFromDOMorURL();
+      if (!id) {
+        container.innerHTML = '<div class="text-error">ID de proyecto no disponible.</div>';
+        return;
+      }
       try {
-        const res = await fetch(apiUrl, { cache: 'no-store' });
+        const res = await fetch(makeApiUrl(id), { cache: 'no-store' });
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         const p = Array.isArray(data) ? data[0] : (data.data || data.project || data);
         renderProject(p);
       } catch (e) {
         console.error(e);
-        document.getElementById('project-detail').innerHTML = '<div class="text-error">No se pudo cargar el proyecto.</div>';
+        container.innerHTML = '<div class="text-error">No se pudo cargar el proyecto.</div>';
       }
     }
+
+    // Re-load project when page is shown (covers bfcache / back navigation)
+    window.addEventListener('pageshow', (ev) => {
+      // If persisted from bfcache, ensure we re-fetch latest data
+      if (ev.persisted) loadProject();
+    });
 
     function renderProject(p) {
       if (!p) {
