@@ -13,13 +13,14 @@ const projectId = Astro.params.id;
 
   <main class="pt-24 px-6 max-w-3xl mx-auto">
     <a href="/projects" class="text-sm text-primary">← Volver a proyectos</a>
-    <div id="project-detail" class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10">
+    <div id="project-detail" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10">
       <div class="text-center text-on-surface-variant">Cargando proyecto...</div>
     </div>
   </main>
 
   <script type="module">
-    const projectId = `${projectId}`;
+    const container = document.getElementById('project-detail');
+    const projectId = container ? container.dataset.id : null;
     const _meta = document.querySelector('meta[name="api-base"]');
     const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
     const apiUrl = `${_apiBase.replace(/\/$/, '')}/projects.php?id=${projectId}`;
