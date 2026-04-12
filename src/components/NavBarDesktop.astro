@@ -8,7 +8,20 @@
 		<span class="text-lg font-bold text-primary">Project Ledger</span>
 	</div>
 	<div class="flex items-center gap-6">
-		<a href="/" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Dashboard</a>
-		<a href="/projects" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Proyectos</a>
+		<a href="/" data-nav="/" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Dashboard</a>
+		<a href="/projects" data-nav="/projects" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Proyectos</a>
 	</div>
+</nav>
+
+<script>
+	(function(){
+		try {
+			const path = location.pathname.replace(/\/$/, '') || '/';
+			document.querySelectorAll('a[data-nav]').forEach(a=>{
+				const target = a.getAttribute('data-nav');
+				if (target === path) a.classList.add('nav-active');
+			});
+		} catch(e) { /* ignore in non-browser */ }
+	})();
+</script>
 </nav>
