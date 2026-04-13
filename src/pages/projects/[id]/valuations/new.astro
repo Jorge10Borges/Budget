@@ -58,7 +58,7 @@ export async function getStaticPaths() { return []; }
         <div>
           <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-medium">Partidas incluidas</div>
-            <button type="button" class="text-sm px-3 py-1 bg-primary text-on-primary rounded cursor-pointer" disabled>Agregar partida</button>
+            <button id="open-add-item" type="button" data-project-id={projectId} class="text-sm px-3 py-1 bg-primary text-on-primary rounded cursor-pointer">Agregar partida</button>
           </div>
 
           <div class="overflow-x-auto bg-surface-container-low rounded border border-outline-variant/10">
@@ -107,6 +107,85 @@ export async function getStaticPaths() { return []; }
   </main>
 
 </MainLayout>
+
+<!-- Modal: seleccionar partida -->
+<div id="partida-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+  <div class="absolute inset-0 bg-black/40" data-close-modal></div>
+  <div class="bg-white dark:bg-surface rounded-lg shadow-lg w-full max-w-3xl relative">
+    <header class="flex items-center justify-between p-4 border-b">
+      <div>
+        <h3 class="text-lg font-semibold">Seleccionar partida para valuar</h3>
+        <p id="modal-valuation" class="text-xs text-on-surface-variant">Valuación: nueva</p>
+      </div>
+      <button data-close-modal class="px-3 py-1">✕</button>
+    </header>
+    <div class="p-4">
+      <!-- Step 1: Selección -->
+      <div id="modal-step-1" class="space-y-3">
+        <div class="flex gap-2">
+          <input id="partida-search" type="search" placeholder="Buscar nombre" class="flex-1 px-3 py-2 rounded border" />
+          <div id="partida-count" class="text-sm text-on-surface-variant self-center">0 partidas</div>
+        </div>
+
+        <div class="overflow-y-auto max-h-64 border rounded">
+          <table id="partida-table" class="w-full text-sm">
+            <thead class="text-on-surface-variant text-xs">
+              <tr>
+                <th class="p-2 w-6">&nbsp;</th>
+                <th class="p-2 text-left">Nombre de la partida</th>
+                <th class="p-2 text-right">Unidad</th>
+                <th class="p-2 text-right">Cantidad</th>
+                <th class="p-2 text-right">Cantidad valuada</th>
+                <th class="p-2 text-right">Por valuar</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="text-center text-on-surface-variant hidden">No hay partidas disponibles para esta valuación.</div>
+      </div>
+
+      <!-- Step 2: Ingresar cantidad a valuar -->
+      <div id="modal-step-2" class="hidden space-y-3">
+        <div>
+          <div class="text-sm text-on-surface-variant">Partida seleccionada</div>
+          <div id="selected-name" class="text-base font-medium mt-1">—</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-xs text-on-surface-variant">Unidad</div>
+            <div id="selected-unit" class="mt-1">—</div>
+          </div>
+          <div>
+            <div class="text-xs text-on-surface-variant">Cantidad total</div>
+            <div id="selected-qty" class="mt-1">0.00</div>
+          </div>
+          <div>
+            <div class="text-xs text-on-surface-variant">Cantidad ya valuada</div>
+            <div id="selected-qty-valued" class="mt-1">0.00</div>
+          </div>
+          <div>
+            <div class="text-xs text-on-surface-variant">Por valuar</div>
+            <div id="selected-por-valuar" class="mt-1">0.00</div>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs text-on-surface-variant">Cantidad a valuar</label>
+          <input id="cantidad-a-valuar" type="number" step="0.01" min="0" class="w-full mt-1 px-3 py-2 rounded border" />
+          <div id="cantidad-error" class="text-xs text-rose-600 mt-1 hidden">La cantidad no puede ser mayor al disponible.</div>
+        </div>
+      </div>
+    </div>
+    <footer class="flex items-center justify-end gap-2 p-4 border-t">
+      <button data-close-modal class="px-3 py-2 rounded border">Cancelar</button>
+      <button id="back-partida" class="px-3 py-2 rounded border hidden">Atrás</button>
+      <button id="next-partida" disabled class="px-3 py-2 bg-primary text-on-primary rounded">Siguiente</button>
+      <button id="finish-partida" disabled class="px-3 py-2 bg-primary text-on-primary rounded hidden">Finalizar</button>
+    </footer>
+  </div>
+</div>
 
 <script type="module">
   const _meta = document.querySelector('meta[name="api-base"]');
@@ -174,4 +253,273 @@ export async function getStaticPaths() { return []; }
 
   window.addEventListener('pageshow', () => loadProjectName());
   loadProjectName();
+
+  // --- Modal logic: cargar partidas y filtrar las ya valuadas en la valuación en curso ---
+  const openBtn = document.getElementById('open-add-item');
+  const modal = document.getElementById('partida-modal');
+  const modalOverlayButtons = modal ? modal.querySelectorAll('[data-close-modal]') : [];
+  const partidaTableBody = document.querySelector('#partida-table tbody');
+  const partidaSearch = document.getElementById('partida-search');
+  const partidaCount = document.getElementById('partida-count');
+  const emptyState = document.getElementById('empty-state');
+
+  const nextBtn = document.getElementById('next-partida');
+  const backBtn = document.getElementById('back-partida');
+  const finishBtn = document.getElementById('finish-partida');
+  const cantidadInput = document.getElementById('cantidad-a-valuar');
+  const cantidadError = document.getElementById('cantidad-error');
+  const selectedNameEl = document.getElementById('selected-name');
+  const selectedUnitEl = document.getElementById('selected-unit');
+  const selectedQtyEl = document.getElementById('selected-qty');
+  const selectedQtyValuedEl = document.getElementById('selected-qty-valued');
+  const selectedPorValuarEl = document.getElementById('selected-por-valuar');
+
+  let projectItems = [];
+  let alreadyValuedIds = [];
+  let valuedQuantities = {}; // map project_item_id -> cantidad valuada
+  let selectedPartidaId = null;
+
+  function resetModalSteps() {
+    // show step 1
+    const step1 = document.getElementById('modal-step-1');
+    const step2 = document.getElementById('modal-step-2');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+    if (backBtn) backBtn.classList.add('hidden');
+    if (finishBtn) { finishBtn.classList.add('hidden'); finishBtn.disabled = true; }
+    if (nextBtn) { nextBtn.classList.remove('hidden'); nextBtn.disabled = true; }
+    if (cantidadInput) { cantidadInput.value = ''; }
+    if (cantidadError) cantidadError.classList.add('hidden');
+  }
+
+  function openModal() {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    resetModalSteps();
+    modal.querySelector('input, button')?.focus();
+    // cargar datos
+    const pid = openBtn?.dataset.projectId || projectNameEl?.dataset.projectId || '';
+    loadProjectItems(pid).then(() => renderList(''));
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    selectedPartidaId = null;
+    resetModalSteps();
+  }
+
+  async function loadProjectItems(projectId) {
+    projectItems = [];
+    alreadyValuedIds = [];
+    valuedQuantities = {};
+    try {
+      const base = _apiBase.replace(/\/$/, '');
+      // 1) obtener todas las partidas del proyecto
+      const res = await fetch(`${base}/project_items.php?project_id=${encodeURIComponent(projectId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.data || []);
+        projectItems = list.map(it => ({ id: String(it.id || it.item_id || it.itemId), nombre: it.item_name || it.name || '', unidad: it.unit || '', qty: Number(it.qty || it.Qty || 0) }));
+      }
+
+      // 2) si hay una valuación existente (id en querystring ?valuation_id=), intentar obtener las partidas ya valuadas y sus cantidades
+      const urlParams = new URLSearchParams(window.location.search);
+      const valuationId = urlParams.get('valuation_id');
+      if (valuationId) {
+        try {
+          const r2 = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`);
+          if (r2.ok) {
+            const d2 = await r2.json();
+            const list2 = Array.isArray(d2) ? d2 : (d2.data || []);
+            alreadyValuedIds = list2.map(x => String(x.project_item_id || x.item_id || x.id));
+            for (const x of list2) {
+              const key = String(x.project_item_id || x.item_id || x.id);
+              const q = Number(x.qty || x.cantidad || x.qty_valued || x.cantidad_valuada || 0);
+              if (!valuedQuantities[key]) valuedQuantities[key] = 0;
+              valuedQuantities[key] += q;
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+    } catch (e) {
+      console.warn('Error cargando partidas', e);
+    }
+  }
+
+  function renderList(filter) {
+    if (!partidaTableBody) return;
+    const q = (filter || '').toLowerCase().trim();
+    const filtered = projectItems.filter(p => !alreadyValuedIds.includes(String(p.id)) && (q === '' || (`${p.nombre}`).toLowerCase().includes(q)));
+    partidaTableBody.innerHTML = '';
+    if (filtered.length === 0) {
+      emptyState.classList.remove('hidden');
+      partidaCount.textContent = '0 partidas';
+      return;
+    }
+    emptyState.classList.add('hidden');
+    partidaCount.textContent = `${filtered.length} partida${filtered.length>1?'s':''}`;
+    for (const p of filtered) {
+      const qtyValued = Number(valuedQuantities[String(p.id)] || 0);
+      const porValuar = Number((p.qty || 0) - qtyValued);
+      const tr = document.createElement('tr');
+      tr.className = 'border-t cursor-pointer hover:bg-surface-dim';
+      tr.dataset.id = p.id;
+      tr.setAttribute('tabindex', '0');
+      tr.innerHTML = `
+        <td class="p-2"><input type="radio" name="partida-select" value="${p.id}" /></td>
+        <td class="p-2">${p.nombre}</td>
+        <td class="p-2 text-right">${p.unidad || ''}</td>
+        <td class="p-2 text-right">${Number(p.qty || 0).toFixed(2)}</td>
+        <td class="p-2 text-right">${qtyValued.toFixed(2)}</td>
+        <td class="p-2 text-right">${porValuar.toFixed(2)}</td>
+      `;
+      // clicking row selects the radio
+      tr.addEventListener('click', (ev) => {
+        // avoid double-toggling if clicking the radio itself
+        const target = ev.target;
+        const radio = tr.querySelector('input[name="partida-select"]');
+        if (target && target.tagName === 'INPUT') {
+          // handled by radio change
+        } else if (radio) {
+          radio.checked = true;
+          radio.focus();
+        }
+        // highlight selection
+        partidaTableBody.querySelectorAll('tr').forEach(r => r.classList.remove('bg-surface-container-high'));
+        tr.classList.add('bg-surface-container-high');
+        selectedPartidaId = p.id;
+        if (nextBtn) nextBtn.disabled = false;
+      });
+      partidaTableBody.appendChild(tr);
+      // wire radio change to set selection
+      const radioEl = tr.querySelector('input[name="partida-select"]');
+      if (radioEl) {
+        radioEl.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            partidaTableBody.querySelectorAll('tr').forEach(r => r.classList.remove('bg-surface-container-high'));
+            tr.classList.add('bg-surface-container-high');
+            selectedPartidaId = e.target.value;
+            if (nextBtn) nextBtn.disabled = false;
+            // ensure keyboard users see focus on the radio
+            e.target.focus();
+          }
+        });
+        // support keyboard selection on the row
+        tr.addEventListener('keydown', (ke) => {
+          const k = ke.key;
+          if (k === 'Enter' || k === ' ') {
+            ke.preventDefault();
+            radioEl.checked = true;
+            radioEl.focus();
+            radioEl.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          if (k === 'ArrowDown') {
+            ke.preventDefault();
+            const next = tr.nextElementSibling;
+            if (next) next.focus();
+          }
+          if (k === 'ArrowUp') {
+            ke.preventDefault();
+            const prev = tr.previousElementSibling;
+            if (prev) prev.focus();
+          }
+        });
+      }
+    }
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openModal);
+  modalOverlayButtons.forEach(b => b.addEventListener('click', closeModal));
+  partidaSearch?.addEventListener('input', (e) => renderList(e.target.value));
+
+  // Next: abrir paso 2 con datos de la partida seleccionada
+  nextBtn?.addEventListener('click', () => {
+    if (!selectedPartidaId) return;
+    const partida = projectItems.find(p => String(p.id) === String(selectedPartidaId));
+    if (!partida) return;
+    const qtyValued = Number(valuedQuantities[String(partida.id)] || 0);
+    const porValuar = Number((partida.qty || 0) - qtyValued);
+
+    // populate step 2
+    if (selectedNameEl) selectedNameEl.textContent = partida.nombre;
+    if (selectedUnitEl) selectedUnitEl.textContent = partida.unidad || '';
+    if (selectedQtyEl) selectedQtyEl.textContent = (partida.qty || 0).toFixed(2);
+    if (selectedQtyValuedEl) selectedQtyValuedEl.textContent = qtyValued.toFixed(2);
+    if (selectedPorValuarEl) selectedPorValuarEl.textContent = porValuar.toFixed(2);
+
+    // show step 2
+    const step1 = document.getElementById('modal-step-1');
+    const step2 = document.getElementById('modal-step-2');
+    if (step1) step1.classList.add('hidden');
+    if (step2) step2.classList.remove('hidden');
+    if (backBtn) backBtn.classList.remove('hidden');
+    if (finishBtn) { finishBtn.classList.remove('hidden'); finishBtn.disabled = true; }
+    if (nextBtn) nextBtn.classList.add('hidden');
+
+    if (cantidadInput) {
+      cantidadInput.value = '';
+      cantidadInput.setAttribute('max', String(porValuar));
+      cantidadInput.focus();
+    }
+  });
+
+  backBtn?.addEventListener('click', () => {
+    const step1 = document.getElementById('modal-step-1');
+    const step2 = document.getElementById('modal-step-2');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+    if (backBtn) backBtn.classList.add('hidden');
+    if (finishBtn) { finishBtn.classList.add('hidden'); finishBtn.disabled = true; }
+    if (nextBtn) { nextBtn.classList.remove('hidden'); nextBtn.disabled = false; }
+  });
+
+  cantidadInput?.addEventListener('input', (e) => {
+    const v = Number(e.target.value || 0);
+    const partida = projectItems.find(p => String(p.id) === String(selectedPartidaId));
+    const qtyValued = Number(valuedQuantities[String(selectedPartidaId)] || 0);
+    const porValuar = partida ? Number((partida.qty || 0) - qtyValued) : 0;
+    if (v > 0 && v <= porValuar) {
+      if (cantidadError) cantidadError.classList.add('hidden');
+      if (finishBtn) finishBtn.disabled = false;
+    } else {
+      if (cantidadError) cantidadError.classList.remove('hidden');
+      if (finishBtn) finishBtn.disabled = true;
+    }
+  });
+
+  finishBtn?.addEventListener('click', () => {
+    const v = Number(cantidadInput?.value || 0);
+    if (!selectedPartidaId || !v || v <= 0) return;
+    const partida = projectItems.find(p => String(p.id) === String(selectedPartidaId));
+    if (!partida) return closeModal();
+    const qtyValuedPrev = Number(valuedQuantities[String(partida.id)] || 0);
+    const porValuarPrev = Number((partida.qty || 0) - qtyValuedPrev);
+    const porValuarAfter = Number((partida.qty || 0) - (qtyValuedPrev + v));
+
+    // insertar fila en la tabla principal con la cantidad ingresada
+    const tbody = document.querySelector('tbody');
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-t border-outline-variant/10 bg-surface-container-high';
+      tr.innerHTML = `
+        <td class="px-3 py-3 text-sm">${partida.nombre}</td>
+        <td class="px-3 py-3 text-sm text-center">${partida.unidad || ''}</td>
+        <td class="px-3 py-3 text-sm text-right">${v.toFixed(2)}</td>
+        <td class="px-3 py-3 text-sm text-right">${(qtyValuedPrev + v).toFixed(2)}</td>
+        <td class="px-3 py-3 text-sm text-right font-medium">${porValuarAfter.toFixed(2)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // actualizar estado local (marcar cantidad valuada)
+    valuedQuantities[String(partida.id)] = qtyValuedPrev + v;
+    // opcional: si ya no queda por valuar, excluirlo de próximas búsquedas
+    if (porValuarAfter <= 0) {
+      alreadyValuedIds.push(String(partida.id));
+    }
+
+    closeModal();
+  });
 </script>
