@@ -13,8 +13,19 @@ export async function getStaticPaths() { return []; }
   <NavBarDesktop />
 
   <main class="pt-24 px-6 container mx-auto">
-    <a href={`/projects/${projectId}`} class="text-sm text-primary">← Volver al proyecto</a>
-    <h1 class="text-2xl font-bold mt-4">Partidas asignadas</h1>
+    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer">← Volver al proyecto</a>
+    <div class="flex flex-row justify-between mt-4">
+      <div>
+        <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold">Proyecto #{projectId}</h1>
+        <h3 class="text-lg font-semibold mt-1">Partidas asignadas</h3>
+        <p class="text-sm text-on-surface-variant">Listado de partidas asociadas a este proyecto.</p>
+      </div>
+      <div class="flex items-end gap-2">
+        <button id="add-item-btn" type="button" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer shadow-sm hover:brightness-95 transition">
+          <span class="material-symbols-outlined mr-2 align-middle">add</span>Agregar partida
+        </button>
+      </div>
+    </div>
 
     <div id="items-root" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-y-auto" style="max-height: calc(100vh - 220px);">
       <div class="text-on-surface-variant">Cargando partidas...</div>
@@ -27,6 +38,128 @@ export async function getStaticPaths() { return []; }
     const _meta = document.querySelector('meta[name="api-base"]');
     const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
     const apiUrl = `${_apiBase.replace(/\/$/, '')}/project_items.php?project_id=${projectId}`;
+    const numFmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // attempt to load project name to display in header
+    const projectNameEl = document.getElementById('project-name');
+    async function loadProjectName() {
+      if (!projectNameEl) return;
+      const pid = projectId || projectNameEl.dataset.projectId || null;
+      if (!pid) return; // nothing to do
+
+      const tryFetch = async (paramName) => {
+        try {
+          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?${paramName}=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+          if (!res.ok) return null;
+          const data = await res.json();
+          const first = Array.isArray(data) ? data[0] : (data.data && data.data[0]) ? data.data[0] : null;
+          if (!first) return null;
+          // validate that returned project matches requested id when possible
+          const returnedId = first.id ?? first.project_id ?? first.ID ?? null;
+          if (returnedId != null) {
+            if (String(returnedId) !== String(pid)) return null;
+          }
+          const name = first.name || first.project_name || first.title || null;
+          return name;
+        } catch (e) {
+          return null;
+        }
+      };
+
+      let name = await tryFetch('id');
+      if (!name) name = await tryFetch('project_id');
+      // fallback: fetch all projects and search for matching id
+      if (!name) {
+        try {
+          const resAll = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php`, { cache: 'no-store' });
+          if (resAll.ok) {
+            const dataAll = await resAll.json();
+            const list = Array.isArray(dataAll) ? dataAll : (dataAll.data || []);
+            const found = list.find(p => String(p.id) === String(pid) || String(p.project_id) === String(pid) || String(p.ID) === String(pid));
+            if (found) {
+              name = found.name || found.project_name || found.title || null;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      if (name) {
+        projectNameEl.textContent = name;
+      } else {
+        projectNameEl.textContent = `Proyecto #${pid}`;
+      }
+    }
+
+    // enhanced toast helper with slide animation and simple icon
+    function showToast(message, type = 'info', timeout = 3500) {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-6 right-6 flex flex-col gap-2 z-50';
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      const base = 'px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-3 max-w-xs';
+      const color = type === 'success' ? 'bg-emerald-600 text-white' : (type === 'error' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-white');
+      toast.className = `${base} ${color}`;
+      toast.style.transform = 'translateX(16px)';
+      toast.style.opacity = '0';
+      toast.style.transition = 'transform 220ms cubic-bezier(.2,.9,.2,1), opacity 220ms ease';
+
+      const icon = document.createElement('span');
+      icon.className = 'text-lg';
+      icon.textContent = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
+      icon.setAttribute('aria-hidden', 'true');
+
+      const text = document.createElement('div');
+      text.textContent = message;
+
+      toast.appendChild(icon);
+      toast.appendChild(text);
+      container.appendChild(toast);
+
+      // force frame then animate in
+      requestAnimationFrame(() => {
+        toast.style.transform = 'translateX(0)';
+        toast.style.opacity = '1';
+      });
+
+      // remove with slide-out
+      setTimeout(() => {
+        toast.style.transform = 'translateX(16px)';
+        toast.style.opacity = '0';
+        setTimeout(() => { toast.remove(); }, 300);
+      }, timeout);
+    }
+
+    // simple confirm modal that returns a Promise<boolean>
+    function confirmDialog(message = '¿Confirmar?') {
+      return new Promise((resolve) => {
+        let modal = document.getElementById('confirm-modal');
+        if (!modal) return resolve(false);
+        const msg = modal.querySelector('.confirm-message');
+        const yes = modal.querySelector('#confirm-yes');
+        const no = modal.querySelector('#confirm-no');
+        msg.textContent = message;
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        document.documentElement.classList.add('modal-open');
+
+        const cleanup = () => {
+          modal.classList.add('hidden'); modal.classList.remove('flex');
+          document.documentElement.classList.remove('modal-open');
+          yes.removeEventListener('click', onYes);
+          no.removeEventListener('click', onNo);
+        };
+
+        const onYes = () => { cleanup(); resolve(true); };
+        const onNo = () => { cleanup(); resolve(false); };
+
+        yes.addEventListener('click', onYes);
+        no.addEventListener('click', onNo);
+      });
+    }
 
     async function loadItems() {
       try {
@@ -46,7 +179,7 @@ export async function getStaticPaths() { return []; }
         root.innerHTML = '<div class="text-on-surface-variant">No hay partidas asignadas a este proyecto.</div>';
         return;
       }
-      const fmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const fmt = numFmt;
       let total = 0;
       const rows = items.map((it, idx) => {
         const rowBg = idx % 2 === 0 ? 'bg-surface-container-low' : 'bg-surface-container-high';
@@ -57,7 +190,7 @@ export async function getStaticPaths() { return []; }
           return `<tr class="${rowBg} border border-outline-variant/90 hover:bg-surface-dim cursor-pointer" data-row-index="${idx}" data-item-id="${it.id || it.item_id}" data-qty="${qty}" data-unit-cost="${unitCost}">
             <td class="px-3 py-1 align-center text-sm border-r border-outline-variant/10">${it.item_name || it.item_id}</td>
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${it.unit || ''}</td>
-          <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${qty}</td>
+          <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${fmt.format(qty)}</td>
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${fmt.format(unitCost)}</td>
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10 font-medium">${fmt.format(totalCost)}</td>
           <td class="px-3 py-1 align-center text-sm text-center">
@@ -71,133 +204,125 @@ export async function getStaticPaths() { return []; }
         </tr>`;
       }).join('\n');
 
-      root.innerHTML = `
+      const tableHtml = `
         <div class="overflow-x-auto">
           <div class="overflow-x-auto">
-          <table class="w-full min-w-[900px] table-auto text-left">
-            <colgroup>
-              <col style="min-width:33%" />
-              <col />
-              <col />
-              <col />
-              <col />
-              <col style="width:128px" />
-            </colgroup>
-            <thead>
-              <tr class="text-xs text-on-surface-variant border border-outline-variant">
-                <th class="px-3 py-1">Partida</th>
-                <th class="px-3 py-1 text-center">Unidad</th>
-                <th class="px-3 py-1 text-center">Cantidad</th>
-                <th class="px-3 py-1 text-center">Costo unit.</th>
-                <th class="px-3 py-1 text-center">Total</th>
-                <th class="px-3 py-1 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="5" class="px-3 py-1 text-sm font-semibold text-right">Total presupuestado</td>
-                <td class="px-3 py-1 text-sm font-semibold text-right">${fmt.format(total)}</td>
-              </tr>
-            </tfoot>
-          </table>
+            <table class="w-full min-w-[900px] table-auto text-left">
+              <colgroup>
+                <col style="min-width:33%" />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col style="width:128px" />
+              </colgroup>
+              <thead>
+                <tr class="text-xs text-on-surface-variant border border-outline-variant">
+                  <th class="px-3 py-1">Partida</th>
+                  <th class="px-3 py-1 text-center">Unidad</th>
+                  <th class="px-3 py-1 text-center">Cantidad</th>
+                  <th class="px-3 py-1 text-center">Costo unit.</th>
+                  <th class="px-3 py-1 text-center">Total</th>
+                  <th class="px-3 py-1 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" class="px-3 py-1 text-sm font-semibold text-right">Total presupuestado</td>
+                  <td class="px-3 py-1 text-sm font-semibold text-right">${fmt.format(total)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `;
+
+      root.innerHTML = tableHtml;
+      // after rendering table, initialize behaviors
+      initTableBehavior();
     }
+    
+    // define initialization function for table behaviors
+    function initTableBehavior() {
+      const tbl = root.querySelector('table');
+      if (!tbl) return;
+      tbl.classList.add('items-table');
 
-      // después de renderizar, añadir comportamiento de selección, modal y estilos dinámicos
-      setTimeout(() => {
-        const tbl = root.querySelector('table');
-        if (!tbl) return;
-        tbl.classList.add('items-table');
+      // inyectar estilo CSS específico (una sola vez)
+      if (!document.getElementById('items-table-styles')) {
+        const s = document.createElement('style');
+        s.id = 'items-table-styles';
+        s.textContent = `
+          .items-table tr.selected { background-color: rgba(14,165,233,0.08) !important; }
+          .items-table tr:hover { filter: brightness(0.985); }
+          .items-table td { vertical-align: top; }
+          .items-table td.border-r { border-right: 1px solid rgba(13,28,47,0.08); }
+          .modal-open { overflow: hidden; }
+        `;
+        document.head.appendChild(s);
+      }
 
-        // inyectar estilo CSS específico (una sola vez)
-        if (!document.getElementById('items-table-styles')) {
-          const s = document.createElement('style');
-          s.id = 'items-table-styles';
-          s.textContent = `
-            .items-table tr.selected { background-color: rgba(14,165,233,0.08) !important; }
-            .items-table tr:hover { filter: brightness(0.985); }
-            .items-table td { vertical-align: top; }
-            .items-table td.border-r { border-right: 1px solid rgba(13,28,47,0.08); }
-            .modal-open { overflow: hidden; }
-          `;
-          document.head.appendChild(s);
-        }
+      const tbody = tbl.querySelector('tbody');
+      if (!tbody) return;
+      let selectedIdx = null;
 
-        const tbody = tbl.querySelector('tbody');
-        if (!tbody) return;
-        let selectedIdx = null;
-
-        // selección por fila (evitar clicks en botones)
-        tbody.querySelectorAll('tr[data-row-index]').forEach(tr => {
-          tr.addEventListener('click', (ev) => {
-            if (ev.target.closest('button')) return; // no seleccionar si se hizo click en botón
-            const idx = tr.dataset.rowIndex;
-            if (selectedIdx !== null) {
-              const prev = tbody.querySelector(`tr[data-row-index="${selectedIdx}"]`);
-              if (prev) prev.classList.remove('selected');
-            }
-            tr.classList.add('selected');
-            selectedIdx = idx;
-          });
+      // selección por fila (evitar clicks en botones)
+      tbody.querySelectorAll('tr[data-row-index]').forEach(tr => {
+        tr.addEventListener('click', (ev) => {
+          if (ev.target.closest('button')) return; // no seleccionar si se hizo click en botón
+          const idx = tr.dataset.rowIndex;
+          if (selectedIdx !== null) {
+            const prev = tbody.querySelector(`tr[data-row-index="${selectedIdx}"]`);
+            if (prev) prev.classList.remove('selected');
+          }
+          tr.classList.add('selected');
+          selectedIdx = idx;
         });
+      });
 
-        // Modal handlers: abrir al pulsar botón Editar
-        const modal = document.getElementById('edit-item-modal');
-        const form = document.getElementById('edit-item-form');
-        const inputQty = form ? form.querySelector('input[name="qty"]') : null;
-        const inputUnit = form ? form.querySelector('input[name="unit_cost"]') : null;
-        let editingRow = null;
+      // Modal handlers: abrir al pulsar botón Editar
+      const modal = document.getElementById('edit-item-modal');
+      const form = document.getElementById('edit-item-form');
+      const inputQty = form ? form.querySelector('input[name="qty"]') : null;
+      const inputUnit = form ? form.querySelector('input[name="unit_cost"]') : null;
+      let editingRow = null;
 
-        tbody.querySelectorAll('button[title="Editar"]').forEach(btn => {
-          btn.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            const tr = btn.closest('tr');
-            if (!tr) return;
-            editingRow = tr;
-            const d = tr.dataset;
-            if (inputQty) inputQty.value = d.qty ?? '';
-            if (inputUnit) inputUnit.value = d.unitCost ?? d.unitCost === undefined ? tr.dataset.unitCost : tr.dataset.unitCost;
-            // show modal
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.documentElement.classList.add('modal-open');
-          });
+      tbody.querySelectorAll('button[title="Editar"]').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const tr = btn.closest('tr');
+          if (!tr) return;
+          editingRow = tr;
+          const d = tr.dataset;
+          if (inputQty) inputQty.value = d.qty ?? '';
+          if (inputUnit) inputUnit.value = d.unitCost ?? d.unitCost === undefined ? tr.dataset.unitCost : tr.dataset.unitCost;
+          // show modal
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+          document.documentElement.classList.add('modal-open');
         });
+      });
 
-        const closeModal = () => {
-          if (!modal) return;
-          modal.classList.add('hidden');
-          modal.classList.remove('flex');
-          document.documentElement.classList.remove('modal-open');
-          editingRow = null;
-        };
-
-        const cancelBtn = document.getElementById('edit-item-cancel');
-        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-
-        if (form) {
-          form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!editingRow) return closeModal();
-            const newQty = Number(inputQty.value || 0);
-            const newUnit = Number(inputUnit.value || 0);
-            // actualizar dataset
-            editingRow.dataset.qty = newQty;
-            editingRow.dataset.unitCost = newUnit;
-            // actualizar celdas (cantidad = td index 2, costo unit = 3, total = 4)
-            const tds = editingRow.querySelectorAll('td');
-            if (tds && tds.length >= 5) {
-              tds[2].textContent = newQty;
-              tds[3].textContent = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(newUnit);
-              const newTotal = newQty * newUnit;
-              tds[4].textContent = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(newTotal);
-            }
-            // recalcular total footer
+      // Delete handler: eliminar de project_items
+      tbody.querySelectorAll('button[title="Eliminar"]').forEach(btn => {
+        btn.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          const tr = btn.closest('tr');
+          if (!tr) return;
+          const id = tr.dataset.itemId;
+          if (!id) return;
+          // use custom confirm dialog
+          const ok = await confirmDialog('¿Eliminar esta partida del proyecto?');
+          if (!ok) return;
+          try {
+            const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!resp.ok) throw new Error('Delete failed: ' + resp.status);
+            await resp.json();
+            // eliminar fila y recalcular total
+            tr.remove();
             const allRows = tbody.querySelectorAll('tr[data-row-index]');
             let sum = 0;
             allRows.forEach(r => {
@@ -208,15 +333,147 @@ export async function getStaticPaths() { return []; }
               }
             });
             const footerTotal = root.querySelector('tfoot td:last-child');
-            if (footerTotal) footerTotal.textContent = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sum);
+            if (footerTotal) footerTotal.textContent = numFmt.format(sum);
+            // mostrar notificación
+            try { showToast('Partida eliminada', 'success'); } catch (e) { console.log('toast error', e); }
+          } catch (err) {
+            console.error('Delete failed', err);
+            showToast('No se pudo eliminar la partida.', 'error');
+          }
+        });
+      });
 
-            closeModal();
-            console.log('Edición (UI):', { itemId: editingRow.dataset.itemId, qty: newQty, unit_cost: newUnit });
+      const closeModal = () => {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.documentElement.classList.remove('modal-open');
+        editingRow = null;
+      };
+
+      const cancelBtn = document.getElementById('edit-item-cancel');
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!editingRow) return closeModal();
+          const newQty = Number(inputQty.value || 0);
+          const newUnit = Number(inputUnit.value || 0);
+          // actualizar dataset
+          editingRow.dataset.qty = newQty;
+          editingRow.dataset.unitCost = newUnit;
+          // actualizar celdas (cantidad = td index 2, costo unit = 3, total = 4)
+          const tds = editingRow.querySelectorAll('td');
+          if (tds && tds.length >= 5) {
+            tds[2].textContent = numFmt.format(newQty);
+            tds[3].textContent = numFmt.format(newUnit);
+            const newTotal = newQty * newUnit;
+            tds[4].textContent = numFmt.format(newTotal);
+          }
+          // recalcular total footer
+          const allRows = tbody.querySelectorAll('tr[data-row-index]');
+          let sum = 0;
+          allRows.forEach(r => {
+            const cells = r.querySelectorAll('td');
+            if (cells && cells.length >= 5) {
+              const val = Number(cells[4].textContent.replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
+              sum += val;
+            }
           });
-        }
-      }, 20);
+          const footerTotal = root.querySelector('tfoot td:last-child');
+          if (footerTotal) footerTotal.textContent = numFmt.format(sum);
 
+          closeModal();
+          try { showToast('Cambios guardados', 'success'); } catch (e) { console.log('toast error', e); }
+          console.log('Edición (UI):', { itemId: editingRow.dataset.itemId, qty: newQty, unit_cost: newUnit });
+        });
+      }
+    }
+    
+    // carga inicial y revalidación desde bfcache
+    // primero intentar cargar nombre del proyecto y luego las partidas
+    loadProjectName();
     loadItems();
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { loadProjectName(); loadItems(); } });
+
+    // --- Modal Agregar Partida: abrir y cargar partidas desde la tabla `items` (API)
+    const addBtn = document.getElementById('add-item-btn');
+    // endpoint para lista de partidas (debe existir en backend)
+    const itemsApiUrl = `${_apiBase.replace(/\/$/, '')}/items.php`;
+
+    async function openAddModal() {
+      console.log('[items] openAddModal called');
+      let modal = document.getElementById('add-item-modal');
+      if (!modal) return;
+      const content = modal.querySelector('.add-items-list');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+      document.documentElement.classList.add('modal-open');
+      if (content) content.innerHTML = '<div class="text-on-surface-variant">Cargando partidas...</div>';
+      console.log('[items] fetching items from', itemsApiUrl);
+      try {
+        const res = await fetch(itemsApiUrl, { cache: 'no-store' });
+        console.log('[items] items fetch status', res.status);
+        if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.data || []);
+        if (!list || list.length === 0) {
+          if (content) content.innerHTML = '<div class="text-on-surface-variant">No hay partidas disponibles.</div>';
+          return;
+        }
+        const html = list.map(it => `
+          <button data-item-id="${it.id}" data-unit-cost="${it.unit_cost}" data-item-name="${(it.name||it.item_name||'').replace(/"/g,'&quot;')}" type="button" class="add-item-row w-full text-left p-2 border-b border-outline-variant/10 flex justify-between items-center hover:bg-surface-dim">
+            <div>
+              <div class="font-medium">${it.name || it.item_name || it.item_id}</div>
+              <div class="text-sm text-on-surface-variant">${it.unit || ''}</div>
+            </div>
+            <div class="text-sm">${numFmt.format(Number(it.unit_cost || 0))}</div>
+          </button>
+        `).join('');
+        if (content) content.innerHTML = `<div class="max-h-64 overflow-y-auto">${html}</div>`;
+
+        // attach click handlers to each row to add it to the project
+        setTimeout(() => {
+          const rows = modal.querySelectorAll('.add-item-row');
+          rows.forEach(r => {
+            r.addEventListener('click', async () => {
+              const itemId = r.dataset.itemId;
+              const unitCost = Number(r.dataset.unitCost || 0);
+              const qty = 1;
+              // POST to project_items.php to create relation
+              try {
+                const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ project_id: projectId, item_id: itemId, qty, unit_cost: unitCost })
+                });
+                if (!resp.ok) throw new Error('Create failed');
+                await resp.json();
+                closeAddModal();
+                loadItems();
+              } catch (err) {
+                console.error('Failed to add item to project', err);
+                const errEl = modal.querySelector('.add-items-list');
+                if (errEl) errEl.innerHTML = '<div class="text-error">No se pudo agregar la partida.</div>';
+              }
+            });
+          });
+        }, 20);
+      } catch (err) {
+        console.error(err);
+        if (content) content.innerHTML = '<div class="text-error">No se pudieron cargar las partidas.</div>';
+      }
+    }
+
+    if (addBtn) addBtn.addEventListener('click', openAddModal);
+    function closeAddModal() {
+      const modal = document.getElementById('add-item-modal');
+      if (!modal) return;
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+      document.documentElement.classList.remove('modal-open');
+    }
+
+    const addCancel = document.getElementById('add-item-cancel'); if (addCancel) addCancel.addEventListener('click', closeAddModal);
   </script>
 
     <!-- Edit item modal (UI) -->
@@ -235,10 +492,35 @@ export async function getStaticPaths() { return []; }
             <input name="unit_cost" type="number" step="0.01" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
           </div>
           <div class="flex justify-end gap-2 mt-2">
-            <button type="button" id="edit-item-cancel" class="px-3 py-2 rounded border border-outline-variant">Cancelar</button>
-            <button type="submit" id="edit-item-save" class="px-3 py-2 bg-primary text-on-primary rounded">Guardar</button>
+            <button type="button" id="edit-item-cancel" class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cancelar</button>
+            <button type="submit" id="edit-item-save" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer">Guardar</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Add item modal (UI) -->
+    <div id="add-item-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+      <div class="fixed inset-0 bg-black/40"></div>
+      <div class="bg-surface p-4 rounded-xl shadow-lg w-full max-w-lg mx-4 z-10">
+        <h3 class="text-lg font-semibold mb-2">Agregar partida</h3>
+        <div class="add-items-list text-sm text-on-surface-variant">Cargando partidas...</div>
+        <div class="flex justify-end gap-2 mt-4">
+          <button type="button" id="add-item-cancel" class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm modal (used instead of native confirm) -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+      <div class="fixed inset-0 bg-black/40"></div>
+      <div class="bg-surface p-4 rounded-xl shadow-lg w-full max-w-sm mx-4 z-10">
+        <h3 class="text-lg font-semibold mb-2">Confirmar acción</h3>
+        <div class="confirm-message text-sm text-on-surface-variant mb-4">¿Confirmar?</div>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="confirm-no" class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cancelar</button>
+          <button type="button" id="confirm-yes" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer">Eliminar</button>
+        </div>
       </div>
     </div>
 </MainLayout>

@@ -1,0 +1,159 @@
+---
+import MainLayout from '../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const projectId = (Astro.params as Record<string, string> | undefined)?.id ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer">← Volver al proyecto</a>
+
+    <div class="flex flex-row justify-between mt-4">
+      <div>
+        <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold">Proyecto</h1>
+        <h3 class="text-lg font-semibold mt-1">Valuaciones</h3>
+        <p class="text-sm text-on-surface-variant">Registro de valuaciones realizadas sobre el proyecto. Datos ficticios para diseño.</p>
+      </div>
+      <div class="flex items-end gap-2">
+        <button id="new-valuation-btn" data-project-id={projectId} type="button" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer shadow-sm hover:brightness-95 transition">
+          Nueva valuación
+        </button>
+      </div>
+    </div>
+
+    <section class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-surface p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <div class="text-sm text-on-surface-variant">Total valuado</div>
+        <div class="text-2xl font-semibold mt-2">$ 1,254,320.00</div>
+        <div class="text-xs text-on-surface-variant mt-1">Suma de todas las valuaciones</div>
+      </div>
+
+      <div class="bg-surface p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <div class="text-sm text-on-surface-variant">Aprobadas</div>
+        <div class="text-2xl font-semibold mt-2">8</div>
+        <div class="text-xs text-on-surface-variant mt-1">Valuaciones aprobadas por supervisión</div>
+      </div>
+
+      <div class="bg-surface p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <div class="text-sm text-on-surface-variant">Pendientes</div>
+        <div class="text-2xl font-semibold mt-2">3</div>
+        <div class="text-xs text-on-surface-variant mt-1">Aprobación pendiente</div>
+      </div>
+    </section>
+
+    <div class="mt-6 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-x-auto">
+      <table class="w-full table-auto min-w-225">
+        <colgroup>
+          <col style="min-width:28%" />
+          <col />
+          <col />
+          <col />
+          <col style="width:180px" />
+        </colgroup>
+        <thead>
+          <tr class="text-xs text-on-surface-variant border border-outline-variant">
+            <th class="px-3 py-2">Fecha</th>
+            <th class="px-3 py-2">Valuador</th>
+            <th class="px-3 py-2 text-right">Monto</th>
+            <th class="px-3 py-2">Estado</th>
+            <th class="px-3 py-2">Observaciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
+            <td class="px-3 py-3 text-sm">2026-04-02</td>
+            <td class="px-3 py-3 text-sm">Ing. Laura Pérez</td>
+            <td class="px-3 py-3 text-sm text-right font-medium">$ 254,320.00</td>
+            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs">Aprobada</span></td>
+            <td class="px-3 py-3 text-sm">Revisión completa, sin observaciones.</td>
+          </tr>
+
+          <tr class="bg-surface-container-high border-b border-outline-variant/10 hover:bg-surface-dim">
+            <td class="px-3 py-3 text-sm">2026-03-26</td>
+            <td class="px-3 py-3 text-sm">Arq. Martín Ruiz</td>
+            <td class="px-3 py-3 text-sm text-right font-medium">$ 320,000.00</td>
+            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs">En revisión</span></td>
+            <td class="px-3 py-3 text-sm">Falta documentación de medición.</td>
+          </tr>
+
+          <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
+            <td class="px-3 py-3 text-sm">2026-03-15</td>
+            <td class="px-3 py-3 text-sm">Valuador externo S.A.</td>
+            <td class="px-3 py-3 text-sm text-right font-medium">$ 180,000.00</td>
+            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-rose-100 text-rose-800 text-xs">Rechazada</span></td>
+            <td class="px-3 py-3 text-sm">Inconsistencias en cantidades reportadas.</td>
+          </tr>
+
+          <tr class="bg-surface-container-high border-b border-outline-variant/10 hover:bg-surface-dim">
+            <td class="px-3 py-3 text-sm">2026-02-28</td>
+            <td class="px-3 py-3 text-sm">Ing. Pedro López</td>
+            <td class="px-3 py-3 text-sm text-right font-medium">$ 500,000.00</td>
+            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs">Aprobada</span></td>
+            <td class="px-3 py-3 text-sm">Aprobada con notas menores.</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" class="px-3 py-2 text-sm font-semibold text-right">Total</td>
+            <td class="px-3 py-2 text-sm font-semibold text-right">$ 1,254,320.00</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </main>
+
+  <script type="module">
+    const _meta = document.querySelector('meta[name="api-base"]');
+    const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+    const projectNameEl = document.getElementById('project-name');
+    async function loadProjectName() {
+      if (!projectNameEl) return;
+      const pid = projectNameEl.dataset.projectId || null;
+      if (!pid) return;
+      const tryFetch = async (paramName) => {
+        try {
+          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?${paramName}=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+          if (!res.ok) return null;
+          const data = await res.json();
+          const first = Array.isArray(data) ? data[0] : (data.data && data.data[0]) ? data.data[0] : null;
+          if (!first) return null;
+          const returnedId = first.id ?? first.project_id ?? first.ID ?? null;
+          if (returnedId != null && String(returnedId) !== String(pid)) return null;
+          return first.name || first.project_name || first.title || null;
+        } catch (e) { return null; }
+      };
+      let name = await tryFetch('id');
+      if (!name) name = await tryFetch('project_id');
+      if (!name) {
+        try {
+          const resAll = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php`, { cache: 'no-store' });
+          if (resAll.ok) {
+            const dataAll = await resAll.json();
+            const list = Array.isArray(dataAll) ? dataAll : (dataAll.data || []);
+            const found = list.find(p => String(p.id) === String(pid) || String(p.project_id) === String(pid) || String(p.ID) === String(pid));
+            if (found) name = found.name || found.project_name || found.title || null;
+          }
+        } catch (e) { /* ignore */ }
+      }
+      if (name) projectNameEl.textContent = name; else projectNameEl.textContent = `Proyecto #${pid}`;
+    }
+
+    loadProjectName();
+
+    const btn = document.getElementById('new-valuation-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const pid = btn.dataset.projectId || '';
+        window.location.href = `/projects/${pid}/valuations/new`;
+      });
+    }
+  </script>
+</MainLayout>

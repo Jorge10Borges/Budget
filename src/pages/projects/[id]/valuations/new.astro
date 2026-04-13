@@ -1,0 +1,177 @@
+---
+import MainLayout from '../../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const projectId = (Astro.params as Record<string, string> | undefined)?.id ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}/valuations`} class="text-sm text-primary cursor-pointer">← Volver a valuaciones</a>
+
+    <div class="mt-4 bg-surface p-6 rounded-xl shadow-sm border border-outline-variant/10">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h1 class="text-2xl font-bold">Nueva valuación</h1>
+          <p class="text-sm text-on-surface-variant">Crea una nueva valuación para este proyecto. Campos ficticios — sin scripts.</p>
+        </div>
+        <div>
+          <div class="text-sm text-on-surface-variant text-end">
+            Proyecto:
+          </div>
+          <strong id="project-name" class="text-2xl" data-project-id={projectId}>Proyecto</strong>
+        </div>
+      </div>
+
+      <form class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="text-xs text-on-surface-variant">Fecha</label>
+            <input type="date" value="2026-04-12" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+          </div>
+          <div>
+            <label class="text-xs text-on-surface-variant">Valuador</label>
+            <input type="text" placeholder="Nombre del valuador" value="Ing. Laura Pérez" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+          </div>
+          <div>
+            <label class="text-xs text-on-surface-variant">Estado</label>
+            <select class="w-full mt-1 px-3 py-2 rounded border border-outline-variant">
+              <option>Borrador</option>
+              <option>Aprobada</option>
+              <option>En revisión</option>
+              <option>Rechazada</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs text-on-surface-variant">Descripción</label>
+          <textarea rows="3" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" placeholder="Notas u observaciones de la valuación">Inspección visual y mediciones de obra. Datos ficticios para diseño.</textarea>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-medium">Partidas incluidas</div>
+            <button type="button" class="text-sm px-3 py-1 bg-primary text-on-primary rounded cursor-pointer" disabled>Agregar partida</button>
+          </div>
+
+          <div class="overflow-x-auto bg-surface-container-low rounded border border-outline-variant/10">
+            <table class="w-full min-w-200">
+              <thead class="text-xs text-on-surface-variant">
+                <tr>
+                  <th class="px-3 py-2 text-left">Partida</th>
+                  <th class="px-3 py-2 text-center">Unidad</th>
+                  <th class="px-3 py-2 text-right">Cantidad</th>
+                  <th class="px-3 py-2 text-right">Costo unit.</th>
+                  <th class="px-3 py-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t border-outline-variant/10">
+                  <td class="px-3 py-3 text-sm">Partida 001 - Excavación</td>
+                  <td class="px-3 py-3 text-sm text-center">m3</td>
+                  <td class="px-3 py-3 text-sm text-right">120.00</td>
+                  <td class="px-3 py-3 text-sm text-right">$ 150.00</td>
+                  <td class="px-3 py-3 text-sm text-right font-medium">$ 18,000.00</td>
+                </tr>
+                <tr class="border-t border-outline-variant/10 bg-surface-container-high">
+                  <td class="px-3 py-3 text-sm">Partida 012 - Hormigón</td>
+                  <td class="px-3 py-3 text-sm text-center">m3</td>
+                  <td class="px-3 py-3 text-sm text-right">40.00</td>
+                  <td class="px-3 py-3 text-sm text-right">$ 1,200.00</td>
+                  <td class="px-3 py-3 text-sm text-right font-medium">$ 48,000.00</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="px-3 py-2 text-sm font-semibold text-right">Total valuación</td>
+                  <td class="px-3 py-2 text-sm font-semibold text-right">$ 66,000.00</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <a href={`/projects/${projectId}/valuations`} class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cancelar</a>
+          <button type="button" class="px-4 py-2 bg-primary text-on-primary rounded cursor-pointer">Crear valuación</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+</MainLayout>
+
+<script type="module">
+  const _meta = document.querySelector('meta[name="api-base"]');
+  const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+  const projectNameEl = document.getElementById('project-name');
+
+  async function loadProjectName() {
+    if (!projectNameEl) return;
+    const pid = projectNameEl.dataset.projectId;
+    if (!pid) return;
+    const base = _apiBase.replace(/\/$/, '');
+
+    // Helper to normalize server responses into a single project object
+    const extractFirst = (resData) => {
+      if (!resData) return null;
+      if (Array.isArray(resData)) return resData[0] || null;
+      if (resData.data && Array.isArray(resData.data)) return resData.data[0] || null;
+      if (typeof resData === 'object') return resData;
+      return null;
+    };
+
+    try {
+      // 1) Try ?id=
+      let res = await fetch(`${base}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const first = extractFirst(data);
+        if (first && (String(first.id) === String(pid) || String(first.project_id) === String(pid))) {
+          projectNameEl.textContent = first.name || first.project_name || first.title || `Proyecto #${pid}`;
+          return;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    try {
+      // 2) Try ?project_id=
+      let res2 = await fetch(`${base}/projects.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+      if (res2.ok) {
+        const data2 = await res2.json();
+        const first2 = extractFirst(data2);
+        if (first2 && (String(first2.id) === String(pid) || String(first2.project_id) === String(pid))) {
+          projectNameEl.textContent = first2.name || first2.project_name || first2.title || `Proyecto #${pid}`;
+          return;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    try {
+      // 3) Fallback: fetch all and search locally
+      let res3 = await fetch(`${base}/projects.php`, { cache: 'no-store' });
+      if (res3.ok) {
+        const all = await res3.json();
+        const arr = Array.isArray(all) ? all : (all.data && Array.isArray(all.data)) ? all.data : [];
+        const found = arr.find(p => String(p.id) === String(pid) || String(p.project_id) === String(pid) || String(p.projectId) === String(pid));
+        if (found) {
+          projectNameEl.textContent = found.name || found.project_name || found.title || `Proyecto #${pid}`;
+          return;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // Last resort: show the id
+    projectNameEl.textContent = `Proyecto #${pid}`;
+  }
+
+  window.addEventListener('pageshow', () => loadProjectName());
+  loadProjectName();
+</script>
