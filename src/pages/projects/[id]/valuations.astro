@@ -48,65 +48,8 @@ export async function getStaticPaths() { return []; }
       </div>
     </section>
 
-    <div class="mt-6 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-x-auto">
-      <table class="w-full table-auto min-w-225">
-        <colgroup>
-          <col style="min-width:28%" />
-          <col />
-          <col />
-          <col />
-          <col style="width:180px" />
-        </colgroup>
-        <thead>
-          <tr class="text-xs text-on-surface-variant border border-outline-variant">
-            <th class="px-3 py-2">Fecha</th>
-            <th class="px-3 py-2">Valuador</th>
-            <th class="px-3 py-2 text-right">Monto</th>
-            <th class="px-3 py-2">Estado</th>
-            <th class="px-3 py-2">Observaciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
-            <td class="px-3 py-3 text-sm">2026-04-02</td>
-            <td class="px-3 py-3 text-sm">Ing. Laura Pérez</td>
-            <td class="px-3 py-3 text-sm text-right font-medium">$ 254,320.00</td>
-            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs">Aprobada</span></td>
-            <td class="px-3 py-3 text-sm">Revisión completa, sin observaciones.</td>
-          </tr>
-
-          <tr class="bg-surface-container-high border-b border-outline-variant/10 hover:bg-surface-dim">
-            <td class="px-3 py-3 text-sm">2026-03-26</td>
-            <td class="px-3 py-3 text-sm">Arq. Martín Ruiz</td>
-            <td class="px-3 py-3 text-sm text-right font-medium">$ 320,000.00</td>
-            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs">En revisión</span></td>
-            <td class="px-3 py-3 text-sm">Falta documentación de medición.</td>
-          </tr>
-
-          <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
-            <td class="px-3 py-3 text-sm">2026-03-15</td>
-            <td class="px-3 py-3 text-sm">Valuador externo S.A.</td>
-            <td class="px-3 py-3 text-sm text-right font-medium">$ 180,000.00</td>
-            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-rose-100 text-rose-800 text-xs">Rechazada</span></td>
-            <td class="px-3 py-3 text-sm">Inconsistencias en cantidades reportadas.</td>
-          </tr>
-
-          <tr class="bg-surface-container-high border-b border-outline-variant/10 hover:bg-surface-dim">
-            <td class="px-3 py-3 text-sm">2026-02-28</td>
-            <td class="px-3 py-3 text-sm">Ing. Pedro López</td>
-            <td class="px-3 py-3 text-sm text-right font-medium">$ 500,000.00</td>
-            <td class="px-3 py-3 text-sm"><span class="inline-block px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs">Aprobada</span></td>
-            <td class="px-3 py-3 text-sm">Aprobada con notas menores.</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="2" class="px-3 py-2 text-sm font-semibold text-right">Total</td>
-            <td class="px-3 py-2 text-sm font-semibold text-right">$ 1,254,320.00</td>
-            <td colspan="2"></td>
-          </tr>
-        </tfoot>
-      </table>
+    <div id="valuations-root" class="mt-6 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-x-auto">
+      <div class="text-on-surface-variant">Cargando valuaciones...</div>
     </div>
   </main>
 
@@ -155,5 +98,107 @@ export async function getStaticPaths() { return []; }
         window.location.href = `/projects/${pid}/valuations/new`;
       });
     }
+
+    // --- Load valuations from API ---
+    const valuationsRoot = document.getElementById('valuations-root');
+    async function loadValuations() {
+      if (!valuationsRoot) return;
+      valuationsRoot.innerHTML = '<div class="text-on-surface-variant">Cargando valuaciones...</div>';
+      const pid = projectNameEl ? projectNameEl.dataset.projectId : null;
+      if (!pid) { valuationsRoot.innerHTML = '<div class="text-error">Proyecto no especificado</div>'; return; }
+      try {
+        const base = _apiBase.replace(/\/$/, '');
+        const res = await fetch(`${base}/valuations.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await res.json();
+        const items = (data && data.data) ? data.data : [];
+        renderValuations(items);
+      } catch (e) {
+        console.error(e);
+        valuationsRoot.innerHTML = '<div class="text-error">No se pudieron cargar las valuaciones.</div>';
+      }
+    }
+
+    function renderValuations(items) {
+      const fmtNumber = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2 });
+      const fmtCurrency = (value, currency) => {
+        try {
+          return new Intl.NumberFormat(undefined, { style: 'currency', currency: (currency || 'USD'), minimumFractionDigits: 2 }).format(Number(value || 0));
+        } catch (e) {
+          return `${fmtNumber.format(Number(value || 0))} ${currency || ''}`;
+        }
+      };
+
+      if (!items || items.length === 0) {
+        valuationsRoot.innerHTML = '<div class="text-on-surface-variant">No hay valuaciones registradas para este proyecto.</div>';
+        return;
+      }
+
+      const badgeFor = (s) => {
+        const label = s || 'estimada';
+        const lower = String(label).toLowerCase();
+        if (lower.includes('aprob')) return `<span class="inline-block px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">${label}</span>`;
+        if (lower.includes('revision') || lower.includes('revisión')) return `<span class="inline-block px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">${label}</span>`;
+        if (lower.includes('rechaz')) return `<span class="inline-block px-2 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-semibold">${label}</span>`;
+        return `<span class="inline-block px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">${label}</span>`;
+      };
+
+      const rows = items.map(v => {
+        const id = v.id || '';
+        const date = v.date || (v.created_at ? v.created_at.split(' ')[0] : '');
+        const createdAt = v.created_at || '';
+        const createdBy = v.created_by != null ? `User ${v.created_by}` : '—';
+        const amount = Number(v.amount || 0);
+        const currency = v.currency || 'USD';
+        const status = v.status || 'estimada';
+        const notes = v.notes ? String(v.notes).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+        const notesShort = notes.length > 120 ? notes.slice(0, 117) + '...' : notes;
+
+        return `
+          <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
+            <td class="px-3 py-3 text-sm font-mono text-on-surface-variant">#${id}</td>
+            <td class="px-3 py-3 text-sm">${date}</td>
+            <td class="px-3 py-3 text-sm">${createdBy}</td>
+            <td class="px-3 py-3 text-sm text-right font-medium">${fmtCurrency(amount, currency)}</td>
+            <td class="px-3 py-3 text-sm">${badgeFor(status)}</td>
+            <td class="px-3 py-3 text-sm text-muted">${notesShort}</td>
+            <td class="px-3 py-3 text-sm text-center">
+                <button class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
+                <button class="inline-flex items-center p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+            </td>
+            <td class="px-3 py-3 text-xs text-on-surface-variant">${createdAt}</td>
+          </tr>`;
+      }).join('\n');
+
+      const tableHtml = `
+        <div class="overflow-x-auto">
+          <table class="w-full table-auto text-left">
+            <thead>
+              <tr class="text-xs text-on-surface-variant border border-outline-variant">
+                <th class="px-3 py-2">ID</th>
+                <th class="px-3 py-2">Fecha</th>
+                <th class="px-3 py-2">Valuador</th>
+                <th class="px-3 py-2 text-right">Monto</th>
+                <th class="px-3 py-2">Estado</th>
+                <th class="px-3 py-2">Observaciones</th>
+                <th class="px-3 py-2 text-center">Acciones</th>
+                <th class="px-3 py-2">Creado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>`;
+
+      valuationsRoot.innerHTML = tableHtml;
+    }
+
+    // cargar valuaciones al inicio
+    loadValuations();
   </script>
 </MainLayout>

@@ -70,6 +70,7 @@ export async function getStaticPaths() { return []; }
                   <th class="px-3 py-2 text-right">Cantidad</th>
                   <th class="px-3 py-2 text-right">Costo unit.</th>
                   <th class="px-3 py-2 text-right">Total</th>
+                  <th class="px-3 py-2 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,6 +80,14 @@ export async function getStaticPaths() { return []; }
                   <td class="px-3 py-3 text-sm text-right">120.00</td>
                   <td class="px-3 py-3 text-sm text-right">$ 150.00</td>
                   <td class="px-3 py-3 text-sm text-right font-medium">$ 18,000.00</td>
+                  <td class="px-3 py-3 text-sm text-center">
+                    <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </td>
                 </tr>
                 <tr class="border-t border-outline-variant/10 bg-surface-container-high">
                   <td class="px-3 py-3 text-sm">Partida 012 - Hormigón</td>
@@ -86,11 +95,19 @@ export async function getStaticPaths() { return []; }
                   <td class="px-3 py-3 text-sm text-right">40.00</td>
                   <td class="px-3 py-3 text-sm text-right">$ 1,200.00</td>
                   <td class="px-3 py-3 text-sm text-right font-medium">$ 48,000.00</td>
+                  <td class="px-3 py-3 text-sm text-center">
+                    <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr>
-                  <td colspan="4" class="px-3 py-2 text-sm font-semibold text-right">Total valuación</td>
+                  <td colspan="5" class="px-3 py-2 text-sm font-semibold text-right">Total valuación</td>
                   <td class="px-3 py-2 text-sm font-semibold text-right">$ 66,000.00</td>
                 </tr>
               </tfoot>
@@ -276,6 +293,7 @@ export async function getStaticPaths() { return []; }
 
   let projectItems = [];
   let alreadyValuedIds = [];
+  let excludedUiIds = [];
   let valuedQuantities = {}; // map project_item_id -> cantidad valuada
   let selectedPartidaId = null;
 
@@ -299,7 +317,32 @@ export async function getStaticPaths() { return []; }
     modal.querySelector('input, button')?.focus();
     // cargar datos
     const pid = openBtn?.dataset.projectId || projectNameEl?.dataset.projectId || '';
-    loadProjectItems(pid).then(() => renderList(''));
+    loadProjectItems(pid).then(() => {
+      excludedUiIds = collectIncludedIdsFromPage();
+      renderList('');
+    });
+  }
+
+  function collectIncludedIdsFromPage() {
+    const ids = [];
+    // try to find the main table of partidas incluidas (has class min-w-200)
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    if (!mainTbody) return ids;
+    mainTbody.querySelectorAll('tr').forEach(tr => {
+      const dataId = tr.dataset.projectItemId || tr.getAttribute('data-project-item-id') || tr.getAttribute('data-id');
+      if (dataId) {
+        ids.push(String(dataId));
+      } else {
+        // fallback: try to match by name text to known projectItems
+        const nameCell = tr.querySelector('td');
+        if (nameCell) {
+          const txt = nameCell.textContent.replace(/\s+/g, ' ').trim();
+          const found = projectItems.find(p => (p.nombre || '').trim() === txt);
+          if (found) ids.push(String(found.id));
+        }
+      }
+    });
+    return ids;
   }
 
   function closeModal() {
@@ -351,7 +394,7 @@ export async function getStaticPaths() { return []; }
   function renderList(filter) {
     if (!partidaTableBody) return;
     const q = (filter || '').toLowerCase().trim();
-    const filtered = projectItems.filter(p => !alreadyValuedIds.includes(String(p.id)) && (q === '' || (`${p.nombre}`).toLowerCase().includes(q)));
+    const filtered = projectItems.filter(p => !alreadyValuedIds.includes(String(p.id)) && !excludedUiIds.includes(String(p.id)) && (q === '' || (`${p.nombre}`).toLowerCase().includes(q)));
     partidaTableBody.innerHTML = '';
     if (filtered.length === 0) {
       emptyState.classList.remove('hidden');
@@ -499,18 +542,29 @@ export async function getStaticPaths() { return []; }
     const porValuarAfter = Number((partida.qty || 0) - (qtyValuedPrev + v));
 
     // insertar fila en la tabla principal con la cantidad ingresada
-    const tbody = document.querySelector('tbody');
+    const tbody = document.querySelector('table.min-w-200 tbody');
     if (tbody) {
       const tr = document.createElement('tr');
       tr.className = 'border-t border-outline-variant/10 bg-surface-container-high';
+      tr.setAttribute('data-project-item-id', String(partida.id));
       tr.innerHTML = `
         <td class="px-3 py-3 text-sm">${partida.nombre}</td>
         <td class="px-3 py-3 text-sm text-center">${partida.unidad || ''}</td>
         <td class="px-3 py-3 text-sm text-right">${v.toFixed(2)}</td>
         <td class="px-3 py-3 text-sm text-right">${(qtyValuedPrev + v).toFixed(2)}</td>
         <td class="px-3 py-3 text-sm text-right font-medium">${porValuarAfter.toFixed(2)}</td>
+        <td class="px-3 py-3 text-sm text-center">
+          <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
+            <span class="material-symbols-outlined">edit</span>
+          </button>
+          <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </td>
       `;
       tbody.appendChild(tr);
+      // update excluded UI ids so modal excludes it if reopened
+      excludedUiIds.push(String(partida.id));
     }
 
     // actualizar estado local (marcar cantidad valuada)
