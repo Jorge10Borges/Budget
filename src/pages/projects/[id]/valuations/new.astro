@@ -33,15 +33,15 @@ export async function getStaticPaths() { return []; }
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="text-xs text-on-surface-variant">Fecha</label>
-            <input type="date" value="2026-04-12" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+            <input id="valuation-date" type="date" value="2026-04-12" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
           </div>
           <div>
             <label class="text-xs text-on-surface-variant">Valuador</label>
-            <input type="text" placeholder="Nombre del valuador" value="Ing. Laura Pérez" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+            <input id="valuator" type="text" placeholder="Nombre del valuador" value="Ing. Laura Pérez" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
           </div>
           <div>
             <label class="text-xs text-on-surface-variant">Estado</label>
-            <select class="w-full mt-1 px-3 py-2 rounded border border-outline-variant">
+            <select id="valuation-state" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant">
               <option>Borrador</option>
               <option>Aprobada</option>
               <option>En revisión</option>
@@ -52,13 +52,13 @@ export async function getStaticPaths() { return []; }
 
         <div>
           <label class="text-xs text-on-surface-variant">Descripción</label>
-          <textarea rows="3" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" placeholder="Notas u observaciones de la valuación">Inspección visual y mediciones de obra. Datos ficticios para diseño.</textarea>
+          <textarea id="valuation-desc" rows="3" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" placeholder="Notas u observaciones de la valuación">Inspección visual y mediciones de obra. Datos ficticios para diseño.</textarea>
         </div>
 
         <div>
           <div class="flex items-center justify-between mb-2">
             <div class="text-sm font-medium">Partidas incluidas</div>
-            <button id="open-add-item" type="button" data-project-id={projectId} class="text-sm px-3 py-1 bg-primary text-on-primary rounded cursor-pointer">Agregar partida</button>
+            <button id="open-add-item" type="button" data-project-id={projectId} disabled class="text-sm px-3 py-1 bg-primary text-on-primary rounded cursor-pointer">Agregar partida</button>
           </div>
 
           <div class="overflow-x-auto bg-surface-container-low rounded border border-outline-variant/10">
@@ -73,38 +73,7 @@ export async function getStaticPaths() { return []; }
                   <th class="px-3 py-2 text-center">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr class="border-t border-outline-variant/10">
-                  <td class="px-3 py-3 text-sm">Partida 001 - Excavación</td>
-                  <td class="px-3 py-3 text-sm text-center">m3</td>
-                  <td class="px-3 py-3 text-sm text-right">120.00</td>
-                  <td class="px-3 py-3 text-sm text-right">$ 150.00</td>
-                  <td class="px-3 py-3 text-sm text-right font-medium">$ 18,000.00</td>
-                  <td class="px-3 py-3 text-sm text-center">
-                    <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
-                      <span class="material-symbols-outlined">edit</span>
-                    </button>
-                    <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
-                      <span class="material-symbols-outlined">delete</span>
-                    </button>
-                  </td>
-                </tr>
-                <tr class="border-t border-outline-variant/10 bg-surface-container-high">
-                  <td class="px-3 py-3 text-sm">Partida 012 - Hormigón</td>
-                  <td class="px-3 py-3 text-sm text-center">m3</td>
-                  <td class="px-3 py-3 text-sm text-right">40.00</td>
-                  <td class="px-3 py-3 text-sm text-right">$ 1,200.00</td>
-                  <td class="px-3 py-3 text-sm text-right font-medium">$ 48,000.00</td>
-                  <td class="px-3 py-3 text-sm text-center">
-                    <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
-                      <span class="material-symbols-outlined">edit</span>
-                    </button>
-                    <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
-                      <span class="material-symbols-outlined">delete</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
+              <tbody></tbody>
               <tfoot>
                 <tr>
                   <td colspan="5" class="px-3 py-2 text-sm font-semibold text-right">Total valuación</td>
@@ -117,7 +86,7 @@ export async function getStaticPaths() { return []; }
 
         <div class="flex justify-end gap-2">
           <a href={`/projects/${projectId}/valuations`} class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cancelar</a>
-          <button type="button" class="px-4 py-2 bg-primary text-on-primary rounded cursor-pointer">Crear valuación</button>
+          <button id="create-valuation" type="button" disabled class="px-4 py-2 bg-primary text-on-primary rounded cursor-pointer">Crear valuación</button>
         </div>
       </form>
     </div>
@@ -291,6 +260,13 @@ export async function getStaticPaths() { return []; }
   const selectedQtyValuedEl = document.getElementById('selected-qty-valued');
   const selectedPorValuarEl = document.getElementById('selected-por-valuar');
 
+  // Controles y campos principales (validación)
+  const createBtn = document.getElementById('create-valuation');
+  const dateInput = document.getElementById('valuation-date');
+  const valuatorInput = document.getElementById('valuator');
+  const stateSelect = document.getElementById('valuation-state');
+  const descInput = document.getElementById('valuation-desc');
+
   let projectItems = [];
   let alreadyValuedIds = [];
   let excludedUiIds = [];
@@ -309,6 +285,42 @@ export async function getStaticPaths() { return []; }
     if (cantidadInput) { cantidadInput.value = ''; }
     if (cantidadError) cantidadError.classList.add('hidden');
   }
+
+  // Valida campos principales y habilita/deshabilita el botón "Agregar partida"
+  function validateFormFields() {
+    const dateValid = dateInput && String(dateInput.value || '').trim() !== '';
+    const valuatorValid = valuatorInput && String(valuatorInput.value || '').trim() !== '';
+    const stateValid = stateSelect && String(stateSelect.value || '').trim() !== '';
+    const descValid = descInput && String(descInput.value || '').trim() !== '';
+    const ok = dateValid && valuatorValid && stateValid && descValid;
+    if (openBtn) {
+      openBtn.disabled = !ok;
+      openBtn.classList.toggle('opacity-50', !ok);
+      openBtn.classList.toggle('cursor-not-allowed', !ok);
+    }
+  }
+
+  // Activa el botón Crear valuación si la tabla principal tiene al menos una partida añadida
+  function updateCreateButton() {
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    const hasRow = mainTbody && mainTbody.querySelector('tr[data-project-item-id]');
+    if (createBtn) {
+      createBtn.disabled = !hasRow;
+      createBtn.classList.toggle('opacity-50', !hasRow);
+      createBtn.classList.toggle('cursor-not-allowed', !hasRow);
+    }
+  }
+
+  // Wiring: validar cuando cambian los campos
+  [dateInput, valuatorInput, stateSelect, descInput].forEach(el => {
+    if (!el) return;
+    const ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(ev, validateFormFields);
+  });
+
+  // inicializar estados
+  validateFormFields();
+  updateCreateButton();
 
   function openModal() {
     if (!modal) return;
@@ -352,6 +364,8 @@ export async function getStaticPaths() { return []; }
     resetModalSteps();
   }
 
+
+  
   async function loadProjectItems(projectId) {
     projectItems = [];
     alreadyValuedIds = [];
@@ -547,6 +561,7 @@ export async function getStaticPaths() { return []; }
       const tr = document.createElement('tr');
       tr.className = 'border-t border-outline-variant/10 bg-surface-container-high';
       tr.setAttribute('data-project-item-id', String(partida.id));
+      tr.setAttribute('data-added-qty', String(v));
       tr.innerHTML = `
         <td class="px-3 py-3 text-sm">${partida.nombre}</td>
         <td class="px-3 py-3 text-sm text-center">${partida.unidad || ''}</td>
@@ -557,7 +572,7 @@ export async function getStaticPaths() { return []; }
           <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
             <span class="material-symbols-outlined">edit</span>
           </button>
-          <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
+          <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer btn-delete" title="Eliminar">
             <span class="material-symbols-outlined">delete</span>
           </button>
         </td>
@@ -565,6 +580,30 @@ export async function getStaticPaths() { return []; }
       tbody.appendChild(tr);
       // update excluded UI ids so modal excludes it if reopened
       excludedUiIds.push(String(partida.id));
+      // actualizar estado del botón Crear valuación
+      updateCreateButton();
+
+      // attach delete handler
+      const deleteBtn = tr.querySelector('button.btn-delete');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          const pidKey = String(partida.id);
+          const added = Number(tr.getAttribute('data-added-qty') || 0);
+          // remove row
+          tr.remove();
+          // remove from excluded UI ids
+          excludedUiIds = excludedUiIds.filter(x => String(x) !== pidKey);
+          // subtract added qty from valuedQuantities
+          valuedQuantities[pidKey] = Math.max(0, (Number(valuedQuantities[pidKey] || 0) - added));
+          // if was marked as already valued but now has remaining qty, unmark it
+          const proj = projectItems.find(p => String(p.id) === pidKey);
+          const remaining = proj ? ((proj.qty || 0) - Number(valuedQuantities[pidKey] || 0)) : 1;
+          if (alreadyValuedIds.includes(pidKey) && remaining > 0) {
+            alreadyValuedIds = alreadyValuedIds.filter(x => String(x) !== pidKey);
+          }
+          updateCreateButton();
+        });
+      }
     }
 
     // actualizar estado local (marcar cantidad valuada)
