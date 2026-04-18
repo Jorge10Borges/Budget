@@ -99,11 +99,14 @@ try {
         $currency = isset($data['currency']) ? $data['currency'] : 'USD';
         $start_date = isset($data['start_date']) ? $data['start_date'] : null;
         $end_date = isset($data['end_date']) ? $data['end_date'] : null;
+        $last_activity = isset($data['last_activity']) ? $data['last_activity'] : null;
+        $collected = isset($data['collected']) ? (float)$data['collected'] : 0.00;
+        $spent = isset($data['spent']) ? (float)$data['spent'] : 0.00;
         $metadata = isset($data['metadata']) ? $data['metadata'] : null;
-        $stmt = $mysqli->prepare('INSERT INTO projects (external_id, name, description, client, owner_user_id, status, currency, start_date, end_date, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        // types: external_id(s), name(s), description(s), client(s), owner_user_id(i), status(s), currency(s), start_date(s), end_date(s), metadata(s)
-        $types = 'ssssisssss';
-        $bind = [$types, $external_id, $name, $description, $client, $owner_user_id, $status, $currency, $start_date, $end_date, $metadata];
+        $metadata = is_array($metadata) ? json_encode($metadata) : $metadata;
+        $stmt = $mysqli->prepare('INSERT INTO projects (external_id, name, description, client, owner_user_id, status, currency, start_date, end_date, last_activity, collected, spent, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $types = 'ssssisssssdds';
+        $bind = [$types, $external_id, $name, $description, $client, $owner_user_id, $status, $currency, $start_date, $end_date, $last_activity, $collected, $spent, $metadata];
         call_user_func_array([$stmt, 'bind_param'], refValues($bind));
         $ok = $stmt->execute();
         if (!$ok) {
@@ -123,11 +126,19 @@ try {
         $data = get_json_body();
         $fields = [];
         $values = [];
-        $allowed = ['external_id','name','description','client','owner_user_id','status','currency','start_date','end_date','metadata','is_active'];
+        $allowed = ['external_id','name','description','client','owner_user_id','status','currency','start_date','end_date','last_activity','collected','spent','metadata','is_active'];
         foreach ($allowed as $f) {
             if (array_key_exists($f, $data)) {
                 $fields[] = "$f = ?";
-                $values[] = $data[$f];
+                if ($f === 'owner_user_id' || $f === 'is_active') {
+                    $values[] = $data[$f] === null ? null : (int)$data[$f];
+                } elseif ($f === 'collected' || $f === 'spent') {
+                    $values[] = $data[$f] === null ? null : (float)$data[$f];
+                } elseif ($f === 'metadata' && is_array($data[$f])) {
+                    $values[] = json_encode($data[$f]);
+                } else {
+                    $values[] = $data[$f];
+                }
             }
         }
         if (empty($fields)) { http_response_code(400); echo json_encode(['error' => 'no fields to update']); exit; }

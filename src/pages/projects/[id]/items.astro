@@ -286,6 +286,7 @@ export async function getStaticPaths() { return []; }
       // Modal handlers: abrir al pulsar botón Editar
       const modal = document.getElementById('edit-item-modal');
       const form = document.getElementById('edit-item-form');
+      const errorEl = document.getElementById('edit-item-error');
       const inputQty = form ? form.querySelector('input[name="qty"]') : null;
       const inputUnit = form ? form.querySelector('input[name="unit_cost"]') : null;
       let editingRow = null;
@@ -299,6 +300,10 @@ export async function getStaticPaths() { return []; }
           const d = tr.dataset;
           if (inputQty) inputQty.value = d.qty ?? '';
           if (inputUnit) inputUnit.value = d.unitCost ?? d.unitCost === undefined ? tr.dataset.unitCost : tr.dataset.unitCost;
+          if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
+          }
           // show modal
           modal.classList.remove('hidden');
           modal.classList.add('flex');
@@ -355,38 +360,84 @@ export async function getStaticPaths() { return []; }
       if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
       if (form) {
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
           e.preventDefault();
           if (!editingRow) return closeModal();
-          const newQty = Number(inputQty.value || 0);
-          const newUnit = Number(inputUnit.value || 0);
-          // actualizar dataset
-          editingRow.dataset.qty = newQty;
-          editingRow.dataset.unitCost = newUnit;
-          // actualizar celdas (cantidad = td index 2, costo unit = 3, total = 4)
-          const tds = editingRow.querySelectorAll('td');
-          if (tds && tds.length >= 5) {
-            tds[2].textContent = numFmt.format(newQty);
-            tds[3].textContent = numFmt.format(newUnit);
-            const newTotal = newQty * newUnit;
-            tds[4].textContent = numFmt.format(newTotal);
-          }
-          // recalcular total footer
-          const allRows = tbody.querySelectorAll('tr[data-row-index]');
-          let sum = 0;
-          allRows.forEach(r => {
-            const cells = r.querySelectorAll('td');
-            if (cells && cells.length >= 5) {
-              const val = Number(cells[4].textContent.replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0;
-              sum += val;
-            }
-          });
-          const footerTotal = root.querySelector('tfoot td:last-child');
-          if (footerTotal) footerTotal.textContent = numFmt.format(sum);
+          const itemId = Number(editingRow.dataset.itemId || 0);
+          const newQty = Number.parseFloat(inputQty?.value || '0');
+          const newUnit = Number.parseFloat(inputUnit?.value || '0');
 
-          closeModal();
-          try { showToast('Cambios guardados', 'success'); } catch (e) { console.log('toast error', e); }
-          console.log('Edición (UI):', { itemId: editingRow.dataset.itemId, qty: newQty, unit_cost: newUnit });
+          if (!itemId) {
+            if (errorEl) {
+              errorEl.textContent = 'No se encontró el identificador de la partida.';
+              errorEl.classList.remove('hidden');
+            }
+            return;
+          }
+
+          if (!Number.isFinite(newQty) || newQty < 0 || !Number.isFinite(newUnit) || newUnit < 0) {
+            if (errorEl) {
+              errorEl.textContent = 'Cantidad y costo unitario deben ser números válidos mayores o iguales a cero.';
+              errorEl.classList.remove('hidden');
+            }
+            return;
+          }
+
+          const saveBtn = document.getElementById('edit-item-save');
+          if (saveBtn instanceof HTMLButtonElement) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Guardando...';
+          }
+
+          try {
+            const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: itemId, qty: newQty, unit_cost: newUnit })
+            });
+            const result = await resp.json().catch(() => ({}));
+            if (!resp.ok) {
+              throw new Error(result.error || result.message || 'No se pudo guardar la partida');
+            }
+
+            const savedQty = Number(result?.data?.qty ?? newQty);
+            const savedUnit = Number(result?.data?.unit_cost ?? newUnit);
+            const savedTotal = Number(result?.data?.total_cost ?? (savedQty * savedUnit));
+
+            editingRow.dataset.qty = String(savedQty);
+            editingRow.dataset.unitCost = String(savedUnit);
+
+            const tds = editingRow.querySelectorAll('td');
+            if (tds && tds.length >= 5) {
+              tds[2].textContent = numFmt.format(savedQty);
+              tds[3].textContent = numFmt.format(savedUnit);
+              tds[4].textContent = numFmt.format(savedTotal);
+            }
+
+            const allRows = tbody.querySelectorAll('tr[data-row-index]');
+            let sum = 0;
+            allRows.forEach(r => {
+              const rowQty = Number.parseFloat(r.dataset.qty || '0');
+              const rowUnit = Number.parseFloat(r.dataset.unitCost || '0');
+              sum += rowQty * rowUnit;
+            });
+            const footerTotal = root.querySelector('tfoot td:last-child');
+            if (footerTotal) footerTotal.textContent = numFmt.format(sum);
+
+            closeModal();
+            try { showToast('Cambios guardados', 'success'); } catch (toastErr) { console.log('toast error', toastErr); }
+          } catch (err) {
+            console.error('Update failed', err);
+            if (errorEl) {
+              errorEl.textContent = err instanceof Error ? err.message : 'No se pudo guardar la partida';
+              errorEl.classList.remove('hidden');
+            }
+          } finally {
+            if (saveBtn instanceof HTMLButtonElement) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Guardar';
+            }
+          }
         });
       }
     }
@@ -417,11 +468,36 @@ export async function getStaticPaths() { return []; }
         if (!res.ok) throw new Error('Fetch failed: ' + res.status);
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.data || []);
-        if (!list || list.length === 0) {
-          if (content) content.innerHTML = '<div class="text-on-surface-variant">No hay partidas disponibles.</div>';
-          return;
-        }
-        const html = list.map(it => `
+        const controlsHtml = `
+          <div class="space-y-3 mb-3">
+            <button type="button" id="open-catalog-item-form" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer">Crear partida en catálogo</button>
+            <form id="catalog-item-form" class="hidden space-y-2 border border-outline-variant/20 rounded-lg p-3 bg-surface-container-low">
+              <div>
+                <label class="block text-xs text-on-surface-variant mb-1" for="catalog-item-name">Nombre</label>
+                <input id="catalog-item-name" name="name" required class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface" />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs text-on-surface-variant mb-1" for="catalog-item-unit">Unidad</label>
+                  <input id="catalog-item-unit" name="unit" placeholder="m2, ml, pza..." class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface" />
+                </div>
+                <div>
+                  <label class="block text-xs text-on-surface-variant mb-1" for="catalog-item-unit-cost">Costo unit.</label>
+                  <input id="catalog-item-unit-cost" name="unit_cost" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface" />
+                </div>
+              </div>
+              <div id="catalog-item-feedback" class="text-xs text-on-surface-variant"></div>
+              <div class="flex justify-end gap-2 pt-1">
+                <button type="button" id="cancel-catalog-item-form" class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cancelar</button>
+                <button type="submit" id="submit-catalog-item-form" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer">Guardar partida</button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        const listHtml = (!list || list.length === 0)
+          ? '<div class="text-on-surface-variant">No hay partidas disponibles.</div>'
+          : `<div class="max-h-64 overflow-y-auto">${list.map(it => `
           <button data-item-id="${it.id}" data-unit-cost="${it.unit_cost}" data-item-name="${(it.name||it.item_name||'').replace(/"/g,'&quot;')}" type="button" class="add-item-row w-full text-left p-2 border-b border-outline-variant/10 flex justify-between items-center hover:bg-surface-dim">
             <div>
               <div class="font-medium">${it.name || it.item_name || it.item_id}</div>
@@ -429,8 +505,79 @@ export async function getStaticPaths() { return []; }
             </div>
             <div class="text-sm">${numFmt.format(Number(it.unit_cost || 0))}</div>
           </button>
-        `).join('');
-        if (content) content.innerHTML = `<div class="max-h-64 overflow-y-auto">${html}</div>`;
+        `).join('')}</div>`;
+
+        if (content) {
+          content.innerHTML = `${controlsHtml}${listHtml}`;
+
+          const openFormBtn = content.querySelector('#open-catalog-item-form');
+          const form = content.querySelector('#catalog-item-form');
+          const cancelFormBtn = content.querySelector('#cancel-catalog-item-form');
+          const feedbackEl = content.querySelector('#catalog-item-feedback');
+
+          const setFormVisible = (visible) => {
+            if (openFormBtn) openFormBtn.classList.toggle('hidden', visible);
+            if (form) form.classList.toggle('hidden', !visible);
+            if (!visible && feedbackEl) {
+              feedbackEl.textContent = '';
+              feedbackEl.className = 'text-xs text-on-surface-variant';
+            }
+          };
+
+          if (openFormBtn) openFormBtn.addEventListener('click', () => setFormVisible(true));
+          if (cancelFormBtn) cancelFormBtn.addEventListener('click', () => setFormVisible(false));
+
+          if (form) {
+            form.addEventListener('submit', async (ev) => {
+              ev.preventDefault();
+              const fd = new FormData(form);
+              const payload = {
+                name: (fd.get('name') || '').toString().trim(),
+                unit: (fd.get('unit') || '').toString().trim(),
+                unit_cost: Number(fd.get('unit_cost') || 0)
+              };
+
+              if (!payload.name) {
+                if (feedbackEl) {
+                  feedbackEl.textContent = 'El nombre es obligatorio.';
+                  feedbackEl.className = 'text-xs text-error';
+                }
+                return;
+              }
+
+              const submitBtn = form.querySelector('#submit-catalog-item-form');
+              if (submitBtn instanceof HTMLButtonElement) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Guardando...';
+              }
+
+              try {
+                const createRes = await fetch(itemsApiUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                });
+                const createData = await createRes.json().catch(() => ({}));
+                if (!createRes.ok) {
+                  throw new Error(createData.error || createData.message || 'No se pudo crear la partida');
+                }
+                showToast('Partida creada en catálogo', 'success');
+                await openAddModal();
+              } catch (createErr) {
+                console.error('Catalog item create failed', createErr);
+                if (feedbackEl) {
+                  feedbackEl.textContent = createErr instanceof Error ? createErr.message : 'No se pudo crear la partida';
+                  feedbackEl.className = 'text-xs text-error';
+                }
+              } finally {
+                if (submitBtn instanceof HTMLButtonElement) {
+                  submitBtn.disabled = false;
+                  submitBtn.textContent = 'Guardar partida';
+                }
+              }
+            });
+          }
+        }
 
         // attach click handlers to each row to add it to the project
         setTimeout(() => {
@@ -485,7 +632,7 @@ export async function getStaticPaths() { return []; }
           <div id="edit-item-error" class="text-sm text-error hidden"></div>
           <div>
             <label class="text-xs text-on-surface-variant">Cantidad</label>
-            <input name="qty" type="number" step="1" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+            <input name="qty" type="number" min="0" step="0.01" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
           </div>
           <div>
             <label class="text-xs text-on-surface-variant">Costo unit.</label>

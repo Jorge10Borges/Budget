@@ -1,0 +1,175 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../components/NavBarMobil.astro';
+
+export const prerender = false;
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 max-w-3xl mx-auto">
+    <a href="/projects" class="text-sm text-primary">← Volver a proyectos</a>
+
+    <section class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10">
+      <header class="mb-4">
+        <h1 class="text-xl font-bold text-on-surface">Nuevo proyecto</h1>
+        <p class="text-sm text-on-surface-variant">Crea el proyecto base y luego completa partidas, valuaciones y gastos.</p>
+      </header>
+
+      <form id="project-create-form" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="md:col-span-2">
+            <label for="name" class="block text-xs text-on-surface-variant mb-1">Nombre</label>
+            <input id="name" name="name" required class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div>
+            <label for="client" class="block text-xs text-on-surface-variant mb-1">Cliente</label>
+            <input id="client" name="client" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div>
+            <label for="external_id" class="block text-xs text-on-surface-variant mb-1">ID externo</label>
+            <input id="external_id" name="external_id" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div>
+            <label for="status" class="block text-xs text-on-surface-variant mb-1">Estado</label>
+            <select id="status" name="status" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint">
+              <option value="draft">Borrador</option>
+              <option value="active">Activo</option>
+              <option value="paused">Pausado</option>
+              <option value="closed">Cerrado</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="currency" class="block text-xs text-on-surface-variant mb-1">Moneda</label>
+            <select id="currency" name="currency" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="COP">COP</option>
+              <option value="MXN">MXN</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="start_date" class="block text-xs text-on-surface-variant mb-1">Fecha inicio</label>
+            <input id="start_date" name="start_date" type="date" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div>
+            <label for="end_date" class="block text-xs text-on-surface-variant mb-1">Fecha fin</label>
+            <input id="end_date" name="end_date" type="date" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div>
+            <label for="collected" class="block text-xs text-on-surface-variant mb-1">Cobrado inicial</label>
+            <input id="collected" name="collected" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div>
+            <label for="spent" class="block text-xs text-on-surface-variant mb-1">Gastado inicial</label>
+            <input id="spent" name="spent" type="number" min="0" step="0.01" value="0" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="description" class="block text-xs text-on-surface-variant mb-1">Descripción</label>
+            <textarea id="description" name="description" rows="4" class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint"></textarea>
+          </div>
+        </div>
+
+        <div id="form-feedback" class="hidden rounded-md px-3 py-2 text-sm"></div>
+
+        <div class="flex items-center gap-2">
+          <button id="submit-button" type="submit" class="px-3 py-2 bg-primary text-on-primary rounded-md disabled:opacity-60">Crear proyecto</button>
+          <a href="/projects" class="px-3 py-2 border border-outline-variant rounded-md">Cancelar</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    const form = document.getElementById('project-create-form');
+    const submitButton = document.getElementById('submit-button');
+    const feedback = document.getElementById('form-feedback');
+    const meta = document.querySelector('meta[name="api-base"]');
+    const apiBase = meta ? meta.content : 'http://localhost/Budget/api';
+    const apiUrl = `${apiBase.replace(/\/$/, '')}/projects.php`;
+
+    function showFeedback(message, variant = 'error') {
+      if (!feedback) return;
+      feedback.textContent = message;
+      feedback.className = `rounded-md px-3 py-2 text-sm ${variant === 'error' ? 'bg-error-container text-on-error-container' : 'bg-tertiary-container text-on-tertiary-container'}`;
+    }
+
+    function normalizeOptional(value) {
+      return typeof value === 'string' && value.trim() === '' ? null : value;
+    }
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!(form instanceof HTMLFormElement)) return;
+
+      const formData = new FormData(form);
+      const payload = {
+        name: (formData.get('name') || '').toString().trim(),
+        client: normalizeOptional((formData.get('client') || '').toString().trim()),
+        external_id: normalizeOptional((formData.get('external_id') || '').toString().trim()),
+        status: (formData.get('status') || 'draft').toString(),
+        currency: (formData.get('currency') || 'USD').toString(),
+        start_date: normalizeOptional((formData.get('start_date') || '').toString()),
+        end_date: normalizeOptional((formData.get('end_date') || '').toString()),
+        collected: Number(formData.get('collected') || 0),
+        spent: Number(formData.get('spent') || 0),
+        description: normalizeOptional((formData.get('description') || '').toString().trim())
+      };
+
+      if (!payload.name) {
+        showFeedback('El nombre es obligatorio.');
+        return;
+      }
+
+      if (feedback) {
+        feedback.className = 'hidden';
+        feedback.textContent = '';
+      }
+
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Creando...';
+      }
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || result.message || 'No se pudo crear el proyecto');
+        }
+        const projectId = result?.data?.id ?? result?.id ?? result?.project_id;
+        if (!projectId) {
+          const fallbackMessage = typeof result?.message === 'string' ? result.message : null;
+          throw new Error(fallbackMessage || 'La API no devolvió el id del proyecto');
+        }
+        showFeedback('Proyecto creado. Redirigiendo...', 'success');
+        window.location.href = `/projects/${projectId}`;
+      } catch (error) {
+        console.error(error);
+        showFeedback(error instanceof Error ? error.message : 'No se pudo crear el proyecto');
+      } finally {
+        if (submitButton instanceof HTMLButtonElement) {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Crear proyecto';
+        }
+      }
+    });
+  </script>
+
+  <NavBarMobil />
+</MainLayout>

@@ -5,8 +5,8 @@ $DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
 $DB_PORT = getenv('DB_PORT') ?: 3306;
 $DB_SOCKET = getenv('DB_SOCKET') ?: '';
 $DB_NAME = getenv('DB_NAME') ?: 'budget';
-$DB_USER = getenv('DB_USER') ?: 'jorgeborges';
-$DB_PASS = getenv('DB_PASS') ?: 'Ve*11818946';
+$DB_USER = getenv('DB_USER') ?: 'root';
+$DB_PASS = getenv('DB_PASS') ?: '';
 
 // Return array for mysqli connection
 return [

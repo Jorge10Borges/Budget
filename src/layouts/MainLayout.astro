@@ -1,12 +1,14 @@
 ---
 import "../styles/global.css";
+
+const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://localhost/Budget/api";
 ---
 
 <html lang="es-ES">
 	<head>
 		<meta charset="utf-8" />
-		<!-- API base URL: cambiar según entorno (ej. http://192.168.1.200/Budget/api) -->
-		<meta name="api-base" content="http://192.168.1.200/Budget/api" />
+		<!-- API base URL: configurable con PUBLIC_API_BASE_URL en .env -->
+		<meta name="api-base" content={API_BASE_URL} />
 		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap" rel="stylesheet" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
