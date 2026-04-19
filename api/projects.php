@@ -29,6 +29,16 @@ function refValues($arr){
     return $refs;
 }
 
+function get_project_status($mysqli, $projectId) {
+    $stmt = $mysqli->prepare('SELECT status FROM projects WHERE id = ? LIMIT 1');
+    $stmt->bind_param('i', $projectId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res->fetch_assoc();
+    $stmt->close();
+    return $row ? (string)($row['status'] ?? '') : null;
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
@@ -123,6 +133,13 @@ try {
 
     if ($method === 'PUT') {
         if (!$id) { http_response_code(400); echo json_encode(['error' => 'id required']); exit; }
+        $currentStatus = get_project_status($mysqli, $id);
+        if ($currentStatus === null) { http_response_code(404); echo json_encode(['error' => 'Project not found']); exit; }
+        if ($currentStatus !== 'draft') {
+            http_response_code(409);
+            echo json_encode(['error' => 'Project is locked', 'message' => 'Solo se puede modificar un proyecto en estado draft']);
+            exit;
+        }
         $data = get_json_body();
         $fields = [];
         $values = [];
@@ -164,6 +181,13 @@ try {
 
     if ($method === 'DELETE') {
         if (!$id) { http_response_code(400); echo json_encode(['error' => 'id required']); exit; }
+        $currentStatus = get_project_status($mysqli, $id);
+        if ($currentStatus === null) { http_response_code(404); echo json_encode(['error' => 'Project not found']); exit; }
+        if ($currentStatus !== 'draft') {
+            http_response_code(409);
+            echo json_encode(['error' => 'Project is locked', 'message' => 'Solo se puede modificar un proyecto en estado draft']);
+            exit;
+        }
         $stmt = $mysqli->prepare('UPDATE projects SET deleted_at = NOW(), is_active = 0 WHERE id = ? LIMIT 1');
         $stmt->bind_param('i', $id);
         $ok = $stmt->execute();

@@ -19,7 +19,7 @@ export async function getStaticPaths() { return []; }
       <div class="flex items-center justify-between mb-4">
         <div>
           <h1 class="text-2xl font-bold">Nueva valuación</h1>
-          <p class="text-sm text-on-surface-variant">Crea una nueva valuación para este proyecto. Campos ficticios — sin scripts.</p>
+          <p class="text-sm text-on-surface-variant">Crea una nueva valuación para este proyecto.</p>
         </div>
         <div>
           <div class="text-sm text-on-surface-variant text-end">
@@ -33,15 +33,15 @@ export async function getStaticPaths() { return []; }
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="text-xs text-on-surface-variant">Fecha</label>
-            <input id="valuation-date" type="date" value="2026-04-12" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+            <input id="valuation-date" type="date" required class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
           </div>
           <div>
             <label class="text-xs text-on-surface-variant">Valuador</label>
-            <input id="valuator" type="text" placeholder="Nombre del valuador" value="Ing. Laura Pérez" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+            <input id="valuator" type="text" required placeholder="Nombre del valuador" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
           </div>
           <div>
             <label class="text-xs text-on-surface-variant">Estado</label>
-            <select id="valuation-state" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant">
+            <select id="valuation-state" required class="w-full mt-1 px-3 py-2 rounded border border-outline-variant">
               <option>Borrador</option>
               <option>Aprobada</option>
               <option>En revisión</option>
@@ -52,7 +52,7 @@ export async function getStaticPaths() { return []; }
 
         <div>
           <label class="text-xs text-on-surface-variant">Descripción</label>
-          <textarea id="valuation-desc" rows="3" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" placeholder="Notas u observaciones de la valuación">Inspección visual y mediciones de obra. Datos ficticios para diseño.</textarea>
+          <textarea id="valuation-desc" rows="3" required class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" placeholder="Notas u observaciones de la valuación"></textarea>
         </div>
 
         <div>
@@ -77,7 +77,7 @@ export async function getStaticPaths() { return []; }
               <tfoot>
                 <tr>
                   <td colspan="5" class="px-3 py-2 text-sm font-semibold text-right">Total valuación</td>
-                  <td class="px-3 py-2 text-sm font-semibold text-right">$ 66,000.00</td>
+                  <td class="px-3 py-2 text-sm font-semibold text-right">$ 0.00</td>
                 </tr>
               </tfoot>
             </table>
@@ -300,6 +300,16 @@ export async function getStaticPaths() { return []; }
     }
   }
 
+  function setTodayAsDefaultDate() {
+    if (!(dateInput instanceof HTMLInputElement)) return;
+    if (dateInput.value) return;
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
   // Activa el botón Crear valuación si la tabla principal tiene al menos una partida añadida
   function updateCreateButton() {
     const mainTbody = document.querySelector('table.min-w-200 tbody');
@@ -319,6 +329,7 @@ export async function getStaticPaths() { return []; }
   });
 
   // inicializar estados
+  setTodayAsDefaultDate();
   validateFormFields();
   updateCreateButton();
 

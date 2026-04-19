@@ -87,6 +87,7 @@ export async function getStaticPaths() {
       const collectedPct = budget ? Math.min(100, Math.round((collected / budget) * 100)) : 0;
       const spentPct = budget ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
       const status = (p.status ?? p.state ?? '').toString();
+      const isEditable = status === 'draft';
       const badge = getStatusBadgeClass(status);
       const statusOptions = PROJECT_STATUS_OPTIONS.map((option) => `
         <button
@@ -108,9 +109,10 @@ export async function getStaticPaths() {
               <button
                 type="button"
                 id="project-status-trigger"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${badge} cursor-pointer transition-transform duration-150 hover:scale-[1.03]"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${badge} ${isEditable ? 'cursor-pointer transition-transform duration-150 hover:scale-[1.03]' : 'cursor-not-allowed opacity-85'}"
                 aria-haspopup="true"
                 aria-expanded="false"
+                ${isEditable ? '' : 'disabled'}
               >
                 <span id="project-status-label">${status}</span>
                 <span class="material-symbols-outlined text-sm">expand_more</span>
@@ -121,6 +123,7 @@ export async function getStaticPaths() {
                 <div id="project-status-feedback" class="hidden text-xs mt-2 px-1"></div>
               </div>
             </div>
+            ${isEditable ? '' : '<span class="text-xs text-on-surface-variant">Proyecto bloqueado: solo se puede modificar en draft.</span>'}
           </div>
           <div id="kpis" class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <!-- Featured KPI (Partidas) -->
@@ -236,7 +239,7 @@ export async function getStaticPaths() {
         detachStatusMenuHandlers = null;
       }
 
-      if (statusTrigger && statusMenu) {
+      if (isEditable && statusTrigger && statusMenu) {
         statusTrigger.addEventListener('click', (event) => {
           event.stopPropagation();
           setStatusMenuOpen(statusMenu.classList.contains('hidden'));

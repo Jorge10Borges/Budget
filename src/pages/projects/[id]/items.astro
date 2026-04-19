@@ -19,6 +19,7 @@ export async function getStaticPaths() { return []; }
         <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold">Proyecto #{projectId}</h1>
         <h3 class="text-lg font-semibold mt-1">Partidas asignadas</h3>
         <p class="text-sm text-on-surface-variant">Listado de partidas asociadas a este proyecto.</p>
+        <p id="items-lock-message" class="hidden text-sm text-on-surface-variant mt-2"></p>
       </div>
       <div class="flex items-end gap-2">
         <button id="add-item-btn" type="button" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer shadow-sm hover:brightness-95 transition">
@@ -39,6 +40,33 @@ export async function getStaticPaths() { return []; }
     const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
     const apiUrl = `${_apiBase.replace(/\/$/, '')}/project_items.php?project_id=${projectId}`;
     const numFmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const addBtn = document.getElementById('add-item-btn');
+    const lockMessageEl = document.getElementById('items-lock-message');
+    let projectStatus = 'draft';
+
+    function isProjectLocked() {
+      return projectStatus !== 'draft';
+    }
+
+    function applyProjectLockUI() {
+      if (lockMessageEl) {
+        if (isProjectLocked()) {
+          lockMessageEl.textContent = `Proyecto bloqueado por estado ${projectStatus}. Solo se puede modificar en draft.`;
+          lockMessageEl.classList.remove('hidden');
+        } else {
+          lockMessageEl.textContent = '';
+          lockMessageEl.classList.add('hidden');
+        }
+      }
+
+      if (addBtn instanceof HTMLButtonElement) {
+        addBtn.disabled = isProjectLocked();
+        addBtn.classList.toggle('opacity-60', isProjectLocked());
+        addBtn.classList.toggle('cursor-not-allowed', isProjectLocked());
+        addBtn.classList.toggle('hover:brightness-95', !isProjectLocked());
+        addBtn.title = isProjectLocked() ? 'Solo se puede modificar un proyecto en draft' : '';
+      }
+    }
 
     // attempt to load project name to display in header
     const projectNameEl = document.getElementById('project-name');
@@ -47,46 +75,23 @@ export async function getStaticPaths() { return []; }
       const pid = projectId || projectNameEl.dataset.projectId || null;
       if (!pid) return; // nothing to do
 
-      const tryFetch = async (paramName) => {
-        try {
-          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?${paramName}=${encodeURIComponent(pid)}`, { cache: 'no-store' });
-          if (!res.ok) return null;
-          const data = await res.json();
-          const first = Array.isArray(data) ? data[0] : (data.data && data.data[0]) ? data.data[0] : null;
-          if (!first) return null;
-          // validate that returned project matches requested id when possible
-          const returnedId = first.id ?? first.project_id ?? first.ID ?? null;
-          if (returnedId != null) {
-            if (String(returnedId) !== String(pid)) return null;
-          }
-          const name = first.name || first.project_name || first.title || null;
-          return name;
-        } catch (e) {
-          return null;
+      try {
+        const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Project fetch failed');
+        const data = await res.json();
+        const project = Array.isArray(data) ? data[0] : (data.data || data.project || data);
+        projectStatus = (project?.status ?? project?.state ?? 'draft').toString() || 'draft';
+        applyProjectLockUI();
+        const name = project?.name || project?.project_name || project?.title || null;
+        if (name) {
+          projectNameEl.textContent = name;
+          return;
         }
-      };
-
-      let name = await tryFetch('id');
-      if (!name) name = await tryFetch('project_id');
-      // fallback: fetch all projects and search for matching id
-      if (!name) {
-        try {
-          const resAll = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php`, { cache: 'no-store' });
-          if (resAll.ok) {
-            const dataAll = await resAll.json();
-            const list = Array.isArray(dataAll) ? dataAll : (dataAll.data || []);
-            const found = list.find(p => String(p.id) === String(pid) || String(p.project_id) === String(pid) || String(p.ID) === String(pid));
-            if (found) {
-              name = found.name || found.project_name || found.title || null;
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
+      } catch (e) {
+        applyProjectLockUI();
       }
-      if (name) {
-        projectNameEl.textContent = name;
-      } else {
+
+      if (!projectNameEl.textContent || projectNameEl.textContent.startsWith('Proyecto #')) {
         projectNameEl.textContent = `Proyecto #${pid}`;
       }
     }
@@ -194,12 +199,14 @@ export async function getStaticPaths() { return []; }
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${fmt.format(unitCost)}</td>
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10 font-medium">${fmt.format(totalCost)}</td>
           <td class="px-3 py-1 align-center text-sm text-center">
-            <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer " title="Editar">
+            ${isProjectLocked()
+              ? '<span class="text-xs text-on-surface-variant">Bloqueado</span>'
+              : `<button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer " title="Editar">
               <span class="material-symbols-outlined">edit</span>
             </button>
             <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
               <span class="material-symbols-outlined">delete</span>
-            </button>
+            </button>`}
           </td>
         </tr>`;
       }).join('\n');
@@ -444,16 +451,23 @@ export async function getStaticPaths() { return []; }
     
     // carga inicial y revalidación desde bfcache
     // primero intentar cargar nombre del proyecto y luego las partidas
-    loadProjectName();
-    loadItems();
-    window.addEventListener('pageshow', (e) => { if (e.persisted) { loadProjectName(); loadItems(); } });
+    async function initializePage() {
+      await loadProjectName();
+      await loadItems();
+    }
+
+    initializePage();
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { initializePage(); } });
 
     // --- Modal Agregar Partida: abrir y cargar partidas desde la tabla `items` (API)
-    const addBtn = document.getElementById('add-item-btn');
     // endpoint para lista de partidas (debe existir en backend)
     const itemsApiUrl = `${_apiBase.replace(/\/$/, '')}/items.php`;
 
     async function openAddModal() {
+      if (isProjectLocked()) {
+        showToast('Solo se puede modificar un proyecto en draft.', 'error');
+        return;
+      }
       console.log('[items] openAddModal called');
       let modal = document.getElementById('add-item-modal');
       if (!modal) return;

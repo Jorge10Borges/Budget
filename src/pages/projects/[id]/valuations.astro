@@ -19,7 +19,7 @@ export async function getStaticPaths() { return []; }
       <div>
         <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold">Proyecto</h1>
         <h3 class="text-lg font-semibold mt-1">Valuaciones</h3>
-        <p class="text-sm text-on-surface-variant">Registro de valuaciones realizadas sobre el proyecto. Datos ficticios para diseño.</p>
+        <p class="text-sm text-on-surface-variant">Registro de valuaciones realizadas sobre el proyecto.</p>
       </div>
       <div class="flex items-end gap-2">
         <button id="new-valuation-btn" data-project-id={projectId} type="button" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer shadow-sm hover:brightness-95 transition">
@@ -29,23 +29,38 @@ export async function getStaticPaths() { return []; }
     </div>
 
     <section class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-surface p-4 rounded-xl shadow-sm border border-outline-variant/10">
-        <div class="text-sm text-on-surface-variant">Total valuado</div>
-        <div class="text-2xl font-semibold mt-2">$ 1,254,320.00</div>
-        <div class="text-xs text-on-surface-variant mt-1">Suma de todas las valuaciones</div>
-      </div>
+      <article class="bg-linear-to-br from-primary to-primary-container text-on-primary rounded-xl p-4 shadow-lg border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02]">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide opacity-90">Total valuado</div>
+            <div id="kpi-total-valued" class="text-2xl font-extrabold mt-2">$ 0.00</div>
+          </div>
+          <span class="material-symbols-outlined opacity-90">payments</span>
+        </div>
+        <div class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Suma de todas las valuaciones</div>
+      </article>
 
-      <div class="bg-surface p-4 rounded-xl shadow-sm border border-outline-variant/10">
-        <div class="text-sm text-on-surface-variant">Aprobadas</div>
-        <div class="text-2xl font-semibold mt-2">8</div>
-        <div class="text-xs text-on-surface-variant mt-1">Valuaciones aprobadas por supervisión</div>
-      </div>
+      <article class="bg-linear-to-br from-emerald-500 to-emerald-600 text-white rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02]">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-white/90">Aprobadas</div>
+            <div id="kpi-approved" class="text-2xl font-extrabold mt-2">0</div>
+          </div>
+          <span class="material-symbols-outlined text-white">verified</span>
+        </div>
+        <div class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Valuaciones aprobadas</div>
+      </article>
 
-      <div class="bg-surface p-4 rounded-xl shadow-sm border border-outline-variant/10">
-        <div class="text-sm text-on-surface-variant">Pendientes</div>
-        <div class="text-2xl font-semibold mt-2">3</div>
-        <div class="text-xs text-on-surface-variant mt-1">Aprobación pendiente</div>
-      </div>
+      <article class="bg-linear-to-br from-amber-400 to-amber-500 text-amber-950 rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02]">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-amber-900/80">Pendientes</div>
+            <div id="kpi-pending" class="text-2xl font-extrabold mt-2">0</div>
+          </div>
+          <span class="material-symbols-outlined text-amber-900">hourglass_top</span>
+        </div>
+        <div class="mt-3 text-xs bg-white/30 inline-flex px-2 py-0.5 rounded-full">En revisión o por aprobar</div>
+      </article>
     </section>
 
     <div id="valuations-root" class="mt-6 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-x-auto">
@@ -101,6 +116,46 @@ export async function getStaticPaths() { return []; }
 
     // --- Load valuations from API ---
     const valuationsRoot = document.getElementById('valuations-root');
+    const kpiTotalEl = document.getElementById('kpi-total-valued');
+    const kpiApprovedEl = document.getElementById('kpi-approved');
+    const kpiPendingEl = document.getElementById('kpi-pending');
+
+    function formatCurrency(value, currency = 'USD') {
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency,
+          minimumFractionDigits: 2
+        }).format(Number(value || 0));
+      } catch (e) {
+        return `${Number(value || 0).toFixed(2)} ${currency || ''}`;
+      }
+    }
+
+    function updateKpis(items) {
+      const list = Array.isArray(items) ? items : [];
+      const total = list.reduce((acc, v) => acc + Number(v.amount || 0), 0);
+
+      let approved = 0;
+      let pending = 0;
+      for (const v of list) {
+        const status = String(v.status || '').toLowerCase();
+        if (status.includes('aprob')) {
+          approved += 1;
+          continue;
+        }
+        if (status.includes('rechaz')) {
+          continue;
+        }
+        pending += 1;
+      }
+
+      const defaultCurrency = list[0]?.currency || 'USD';
+      if (kpiTotalEl) kpiTotalEl.textContent = formatCurrency(total, defaultCurrency);
+      if (kpiApprovedEl) kpiApprovedEl.textContent = String(approved);
+      if (kpiPendingEl) kpiPendingEl.textContent = String(pending);
+    }
+
     async function loadValuations() {
       if (!valuationsRoot) return;
       valuationsRoot.innerHTML = '<div class="text-on-surface-variant">Cargando valuaciones...</div>';
@@ -112,9 +167,11 @@ export async function getStaticPaths() { return []; }
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         const items = (data && data.data) ? data.data : [];
+        updateKpis(items);
         renderValuations(items);
       } catch (e) {
         console.error(e);
+        updateKpis([]);
         valuationsRoot.innerHTML = '<div class="text-error">No se pudieron cargar las valuaciones.</div>';
       }
     }

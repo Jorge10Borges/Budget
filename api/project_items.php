@@ -19,6 +19,30 @@ function get_json_body() {
     return is_array($data) ? $data : null;
 }
 
+function get_project_status($mysqli, $projectId) {
+    $stmt = $mysqli->prepare('SELECT status FROM projects WHERE id = ? LIMIT 1');
+    $stmt->bind_param('i', $projectId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res->fetch_assoc();
+    $stmt->close();
+    return $row ? (string)($row['status'] ?? '') : null;
+}
+
+function ensure_project_is_draft($mysqli, $projectId) {
+    $status = get_project_status($mysqli, $projectId);
+    if ($status === null) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
+        exit;
+    }
+    if ($status !== 'draft') {
+        http_response_code(409);
+        echo json_encode(['error' => 'Project is locked', 'message' => 'Solo se puede modificar un proyecto en estado draft']);
+        exit;
+    }
+}
+
 try {
     $method = $_SERVER['REQUEST_METHOD'];
 
@@ -68,6 +92,7 @@ try {
             echo json_encode(['error' => 'project_id and item_id are required']);
             exit;
         }
+        ensure_project_is_draft($mysqli, $project_id);
         $total_cost = round($qty * $unit_cost, 2);
         $ins = $mysqli->prepare("INSERT INTO project_items (project_id, item_id, qty, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)");
         $ins->bind_param('issdd', $project_id, $item_id, $qty, $unit_cost, $total_cost);
@@ -97,7 +122,7 @@ try {
             exit;
         }
         // Obtener valores actuales
-        $sel = $mysqli->prepare("SELECT qty, unit_cost FROM project_items WHERE id = ?");
+        $sel = $mysqli->prepare("SELECT project_id, qty, unit_cost FROM project_items WHERE id = ?");
         $sel->bind_param('i', $id);
         $sel->execute();
         $res = $sel->get_result();
@@ -108,6 +133,7 @@ try {
             echo json_encode(['error' => 'Item not found']);
             exit;
         }
+        ensure_project_is_draft($mysqli, (int)$row['project_id']);
         $qty = isset($body['qty']) ? (float)$body['qty'] : (float)$row['qty'];
         $unit_cost = isset($body['unit_cost']) ? (float)$body['unit_cost'] : (float)$row['unit_cost'];
         $total_cost = round($qty * $unit_cost, 2);
@@ -136,6 +162,18 @@ try {
             echo json_encode(['error' => 'id is required for delete']);
             exit;
         }
+        $sel = $mysqli->prepare("SELECT project_id FROM project_items WHERE id = ? LIMIT 1");
+        $sel->bind_param('i', $id);
+        $sel->execute();
+        $res = $sel->get_result();
+        $row = $res->fetch_assoc();
+        $sel->close();
+        if (!$row) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Item not found']);
+            exit;
+        }
+        ensure_project_is_draft($mysqli, (int)$row['project_id']);
         $del = $mysqli->prepare("DELETE FROM project_items WHERE id = ?");
         $del->bind_param('i', $id);
         if (!$del->execute()) {

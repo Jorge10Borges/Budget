@@ -42,7 +42,23 @@ export async function getStaticPaths() {
     }
 
     function renderForm(p) {
-      const fmt = new Intl.NumberFormat(undefined);
+      const status = (p?.status ?? p?.state ?? '').toString();
+      if (status && status !== 'draft') {
+        document.getElementById('edit-root').innerHTML = `
+          <div class="space-y-3">
+            <h1 class="text-xl font-bold">Editar proyecto</h1>
+            <div class="rounded-xl border border-outline-variant/20 bg-surface-container-high p-4 text-on-surface">
+              <div class="font-medium">Este proyecto está bloqueado.</div>
+              <p class="text-sm text-on-surface-variant mt-1">Solo se puede modificar un proyecto cuando su estado es draft. Estado actual: <span class="font-medium">${status}</span>.</p>
+            </div>
+            <div>
+              <a href="/projects/${projectId}" class="px-3 py-2 border rounded-md inline-flex">Volver al proyecto</a>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       document.getElementById('edit-root').innerHTML = `
         <h1 class="text-xl font-bold mb-3">Editar proyecto</h1>
         <form id="project-form" class="space-y-3">
