@@ -46,7 +46,8 @@ try {
     if ($method === 'GET') {
         if ($id) {
             // Return single project with calculated budget from project_items
-            $sql = "SELECT p.*, COALESCE(t.calc_budget, 0) AS calculated_budget
+            $sql = "SELECT p.*, COALESCE(t.calc_budget, 0) AS calculated_budget,
+                           COALESCE(e.total_spent, p.spent, 0) AS spent
                     FROM projects p
                     LEFT JOIN (
                         SELECT pi.project_id,
@@ -55,6 +56,11 @@ try {
                         LEFT JOIN items i ON i.id = pi.item_id
                         GROUP BY pi.project_id
                     ) t ON t.project_id = p.id
+                    LEFT JOIN (
+                        SELECT project_id, SUM(amount) AS total_spent
+                        FROM expenses
+                        GROUP BY project_id
+                    ) e ON e.project_id = p.id
                     WHERE p.id = ? LIMIT 1";
             $stmt = $mysqli->prepare($sql);
             $stmt->bind_param('i', $id);
@@ -69,7 +75,8 @@ try {
             $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
             // List projects with calculated budget
             $sql = "SELECT p.id, p.external_id, p.name, p.description, p.client, p.owner_user_id, p.status,
-                           COALESCE(t.calc_budget, 0) AS calculated_budget, p.currency, p.start_date, p.end_date, p.is_active, p.created_at, p.updated_at
+                           COALESCE(t.calc_budget, 0) AS calculated_budget, COALESCE(e.total_spent, p.spent, 0) AS spent,
+                           p.currency, p.start_date, p.end_date, p.is_active, p.created_at, p.updated_at
                     FROM projects p
                     LEFT JOIN (
                         SELECT pi.project_id,
@@ -78,6 +85,11 @@ try {
                         LEFT JOIN items i ON i.id = pi.item_id
                         GROUP BY pi.project_id
                     ) t ON t.project_id = p.id
+                    LEFT JOIN (
+                        SELECT project_id, SUM(amount) AS total_spent
+                        FROM expenses
+                        GROUP BY project_id
+                    ) e ON e.project_id = p.id
                     WHERE p.deleted_at IS NULL
                     ORDER BY p.id DESC
                     LIMIT ? OFFSET ?";
@@ -135,12 +147,17 @@ try {
         if (!$id) { http_response_code(400); echo json_encode(['error' => 'id required']); exit; }
         $currentStatus = get_project_status($mysqli, $id);
         if ($currentStatus === null) { http_response_code(404); echo json_encode(['error' => 'Project not found']); exit; }
-        if ($currentStatus !== 'draft') {
+        $data = get_json_body();
+
+        $fieldsToUpdate = array_keys($data);
+        $onlyStatusChange = count($fieldsToUpdate) === 1 && in_array('status', $fieldsToUpdate, true);
+
+        if ($currentStatus !== 'draft' && !$onlyStatusChange) {
             http_response_code(409);
             echo json_encode(['error' => 'Project is locked', 'message' => 'Solo se puede modificar un proyecto en estado draft']);
             exit;
         }
-        $data = get_json_body();
+
         $fields = [];
         $values = [];
         $allowed = ['external_id','name','description','client','owner_user_id','status','currency','start_date','end_date','last_activity','collected','spent','metadata','is_active'];

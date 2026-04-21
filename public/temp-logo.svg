@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="110" viewBox="0 0 320 110" role="img" aria-labelledby="title desc">
+  <title id="title">Logo temporal empresa</title>
+  <desc id="desc">Logo temporal para documentos PDF de presupuesto</desc>
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="320" height="110" rx="14" fill="#ffffff"/>
+  <rect x="10" y="10" width="90" height="90" rx="10" fill="url(#g)"/>
+  <path d="M35 67 L52 42 L69 67" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="118" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="#0f172a">TU EMPRESA</text>
+  <text x="118" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#475569">Logo temporal para propuesta</text>
+</svg>

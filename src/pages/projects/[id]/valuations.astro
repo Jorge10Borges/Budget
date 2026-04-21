@@ -28,8 +28,8 @@ export async function getStaticPaths() { return []; }
       </div>
     </div>
 
-    <section class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-      <article class="bg-linear-to-br from-primary to-primary-container text-on-primary rounded-xl p-4 shadow-lg border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02]">
+    <section class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <article class="bg-linear-to-br from-primary to-primary-container text-on-primary rounded-xl p-4 shadow-lg border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
         <div class="flex items-start justify-between">
           <div>
             <div class="text-[10px] uppercase tracking-wide opacity-90">Total valuado</div>
@@ -40,7 +40,7 @@ export async function getStaticPaths() { return []; }
         <div class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Suma de todas las valuaciones</div>
       </article>
 
-      <article class="bg-linear-to-br from-emerald-500 to-emerald-600 text-white rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02]">
+      <article class="bg-linear-to-br from-emerald-500 to-emerald-600 text-white rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
         <div class="flex items-start justify-between">
           <div>
             <div class="text-[10px] uppercase tracking-wide text-white/90">Aprobadas</div>
@@ -51,7 +51,7 @@ export async function getStaticPaths() { return []; }
         <div class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Valuaciones aprobadas</div>
       </article>
 
-      <article class="bg-linear-to-br from-amber-400 to-amber-500 text-amber-950 rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02]">
+      <article class="bg-linear-to-br from-amber-400 to-amber-500 text-amber-950 rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
         <div class="flex items-start justify-between">
           <div>
             <div class="text-[10px] uppercase tracking-wide text-amber-900/80">Pendientes</div>
@@ -61,12 +61,48 @@ export async function getStaticPaths() { return []; }
         </div>
         <div class="mt-3 text-xs bg-white/30 inline-flex px-2 py-0.5 rounded-full">En revisión o por aprobar</div>
       </article>
+
+      <article class="bg-linear-to-br from-sky-500 to-sky-600 text-white rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-white/90">Cobradas</div>
+            <div id="kpi-collected" class="text-2xl font-extrabold mt-2">0</div>
+          </div>
+          <span class="material-symbols-outlined text-white">receipt_long</span>
+        </div>
+        <div class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Valuaciones marcadas como cobradas</div>
+      </article>
     </section>
 
     <div id="valuations-root" class="mt-6 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-x-auto">
       <div class="text-on-surface-variant">Cargando valuaciones...</div>
     </div>
   </main>
+
+  <div id="valuation-delete-modal" class="fixed inset-0 z-60 hidden items-center justify-center px-4">
+    <button id="valuation-delete-modal-backdrop" type="button" data-close-valuation-delete-modal class="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-200 ease-out" aria-label="Cerrar confirmación"></button>
+    <section id="valuation-delete-modal-panel" class="relative z-10 w-full max-w-md rounded-2xl border border-outline-variant/20 bg-surface shadow-xl transform-gpu opacity-0 translate-y-4 scale-95 transition-all duration-200 ease-out will-change-transform will-change-opacity">
+      <div class="border-b border-outline-variant/15 px-5 py-4">
+        <h3 class="text-lg font-semibold text-on-surface">Confirmar eliminación</h3>
+        <p class="mt-1 text-sm text-on-surface-variant">Esta acción elimina la valuación y sus partidas asociadas.</p>
+      </div>
+
+      <div class="space-y-3 px-5 py-4">
+        <div class="rounded-xl border border-error/20 bg-error/10 px-3 py-3 text-sm text-on-surface">
+          <p class="font-medium text-error">¿Deseas eliminar esta valuación?</p>
+          <p id="delete-valuation-summary" class="mt-1 text-on-surface-variant"></p>
+        </div>
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-outline-variant/15 px-5 py-4 sm:flex-row sm:justify-end">
+        <button id="cancel-valuation-delete" type="button" data-close-valuation-delete-modal class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar</button>
+        <button id="confirm-valuation-delete" type="button" class="inline-flex items-center justify-center gap-2 rounded-lg bg-error px-4 py-2 text-on-error shadow-sm transition hover:brightness-95 cursor-pointer">
+          <span class="material-symbols-outlined text-base">delete</span>
+          Eliminar valuación
+        </button>
+      </div>
+    </section>
+  </div>
 
   <script type="module">
     const _meta = document.querySelector('meta[name="api-base"]');
@@ -119,6 +155,16 @@ export async function getStaticPaths() { return []; }
     const kpiTotalEl = document.getElementById('kpi-total-valued');
     const kpiApprovedEl = document.getElementById('kpi-approved');
     const kpiPendingEl = document.getElementById('kpi-pending');
+    const kpiCollectedEl = document.getElementById('kpi-collected');
+    const deleteModal = document.getElementById('valuation-delete-modal');
+    const deleteModalBackdrop = document.getElementById('valuation-delete-modal-backdrop');
+    const deleteModalPanel = document.getElementById('valuation-delete-modal-panel');
+    const deleteSummaryEl = document.getElementById('delete-valuation-summary');
+    const confirmDeleteBtn = document.getElementById('confirm-valuation-delete');
+
+    let currentValuations = [];
+    let pendingDeleteId = null;
+    let pendingDeleteResolve = null;
 
     function formatCurrency(value, currency = 'USD') {
       try {
@@ -138,8 +184,13 @@ export async function getStaticPaths() { return []; }
 
       let approved = 0;
       let pending = 0;
+      let collected = 0;
       for (const v of list) {
         const status = String(v.status || '').toLowerCase();
+        if (status.includes('cobrad') || status.includes('paid')) {
+          collected += 1;
+          continue;
+        }
         if (status.includes('aprob')) {
           approved += 1;
           continue;
@@ -154,6 +205,7 @@ export async function getStaticPaths() { return []; }
       if (kpiTotalEl) kpiTotalEl.textContent = formatCurrency(total, defaultCurrency);
       if (kpiApprovedEl) kpiApprovedEl.textContent = String(approved);
       if (kpiPendingEl) kpiPendingEl.textContent = String(pending);
+      if (kpiCollectedEl) kpiCollectedEl.textContent = String(collected);
     }
 
     async function loadValuations() {
@@ -167,16 +219,131 @@ export async function getStaticPaths() { return []; }
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         const items = (data && data.data) ? data.data : [];
+        currentValuations = items;
         updateKpis(items);
         renderValuations(items);
       } catch (e) {
         console.error(e);
+        currentValuations = [];
         updateKpis([]);
         valuationsRoot.innerHTML = '<div class="text-error">No se pudieron cargar las valuaciones.</div>';
       }
     }
 
+    function setDeleteModalVisibility(visible) {
+      if (!deleteModal) return;
+
+      if (visible) {
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(() => {
+          deleteModalBackdrop?.classList.remove('opacity-0');
+          deleteModalBackdrop?.classList.add('opacity-100');
+          deleteModalPanel?.classList.remove('opacity-0', 'translate-y-4', 'scale-95');
+          deleteModalPanel?.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+        });
+
+        setTimeout(() => confirmDeleteBtn?.focus(), 170);
+        return;
+      }
+
+      deleteModalBackdrop?.classList.remove('opacity-100');
+      deleteModalBackdrop?.classList.add('opacity-0');
+      deleteModalPanel?.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+      deleteModalPanel?.classList.add('opacity-0', 'translate-y-4', 'scale-95');
+
+      let closed = false;
+      const finishClose = () => {
+        if (closed) return;
+        closed = true;
+        deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
+        document.body.style.overflow = '';
+      };
+
+      deleteModalPanel?.addEventListener('transitionend', finishClose, { once: true });
+      setTimeout(finishClose, 230);
+    }
+
+    function closeDeleteModal(confirmed) {
+      setDeleteModalVisibility(false);
+      if (pendingDeleteResolve) {
+        pendingDeleteResolve(Boolean(confirmed));
+      }
+      pendingDeleteResolve = null;
+      pendingDeleteId = null;
+    }
+
+    function askDeleteConfirmation(valuation) {
+      if (!deleteModal || !deleteSummaryEl) {
+        return Promise.resolve(window.confirm('¿Eliminar esta valuación?'));
+      }
+
+      const date = valuation?.date || 'Sin fecha';
+      const amount = formatCurrency(valuation?.amount || 0, valuation?.currency || 'USD');
+      const status = valuation?.status || 'Sin estado';
+      deleteSummaryEl.textContent = `${date} · ${amount} · ${status}`;
+      pendingDeleteId = String(valuation?.id || '');
+
+      return new Promise((resolve) => {
+        pendingDeleteResolve = resolve;
+        setDeleteModalVisibility(true);
+      });
+    }
+
+    async function handleDeleteValuation(id) {
+      if (!id) return;
+      const base = _apiBase.replace(/\/$/, '');
+
+      if (confirmDeleteBtn) {
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      }
+
+      try {
+        const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload.error || payload.message || 'No se pudo eliminar la valuación');
+        }
+        await loadValuations();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'No se pudo eliminar la valuación');
+      } finally {
+        if (confirmDeleteBtn) {
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+      }
+    }
+
     function renderValuations(items) {
+      const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+      const extractValuatorAndObservation = (rawNotes) => {
+        const source = String(rawNotes ?? '');
+        const match = source.match(/^\s*valuador\s*:\s*(.+?)(?:\r?\n\r?\n|\r?\n|$)([\s\S]*)$/i);
+
+        if (!match) {
+          return {
+            valuator: '',
+            observation: source.trim()
+          };
+        }
+
+        return {
+          valuator: String(match[1] || '').trim(),
+          observation: String(match[2] || '').trim()
+        };
+      };
+
       const fmtNumber = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2 });
       const fmtCurrency = (value, currency) => {
         try {
@@ -202,32 +369,35 @@ export async function getStaticPaths() { return []; }
 
       const rows = items.map(v => {
         const id = v.id || '';
+        const pid = projectNameEl?.dataset.projectId || '';
+        const editHref = `/projects/${encodeURIComponent(pid)}/valuations/${encodeURIComponent(String(id))}/edit`;
         const date = v.date || (v.created_at ? v.created_at.split(' ')[0] : '');
         const createdAt = v.created_at || '';
-        const createdBy = v.created_by != null ? `User ${v.created_by}` : '—';
+        const parsed = extractValuatorAndObservation(v.notes);
+        const valuator = parsed.valuator || (v.created_by != null ? `User ${v.created_by}` : '—');
         const amount = Number(v.amount || 0);
         const currency = v.currency || 'USD';
         const status = v.status || 'estimada';
-        const notes = v.notes ? String(v.notes).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-        const notesShort = notes.length > 120 ? notes.slice(0, 117) + '...' : notes;
+        const observation = parsed.observation;
+        const observationShort = observation.length > 120 ? observation.slice(0, 117) + '...' : observation;
 
         return `
           <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
             <td class="px-3 py-3 text-sm font-mono text-on-surface-variant">#${id}</td>
-            <td class="px-3 py-3 text-sm">${date}</td>
-            <td class="px-3 py-3 text-sm">${createdBy}</td>
+            <td class="px-3 py-3 text-sm">${escapeHtml(date)}</td>
+            <td class="px-3 py-3 text-sm">${escapeHtml(valuator)}</td>
             <td class="px-3 py-3 text-sm text-right font-medium">${fmtCurrency(amount, currency)}</td>
             <td class="px-3 py-3 text-sm">${badgeFor(status)}</td>
-            <td class="px-3 py-3 text-sm text-muted">${notesShort}</td>
+            <td class="px-3 py-3 text-sm text-muted">${escapeHtml(observationShort || '—')}</td>
             <td class="px-3 py-3 text-sm text-center">
-                <button class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
+                <a href="${editHref}" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
                   <span class="material-symbols-outlined">edit</span>
-                </button>
-                <button class="inline-flex items-center p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
+                </a>
+                <button type="button" data-action="delete" data-id="${escapeHtml(String(id))}" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
                   <span class="material-symbols-outlined">delete</span>
                 </button>
             </td>
-            <td class="px-3 py-3 text-xs text-on-surface-variant">${createdAt}</td>
+            <td class="px-3 py-3 text-xs text-on-surface-variant">${escapeHtml(createdAt)}</td>
           </tr>`;
       }).join('\n');
 
@@ -254,6 +424,39 @@ export async function getStaticPaths() { return []; }
 
       valuationsRoot.innerHTML = tableHtml;
     }
+
+    document.querySelectorAll('[data-close-valuation-delete-modal]').forEach((element) => {
+      element.addEventListener('click', () => {
+        closeDeleteModal(false);
+      });
+    });
+
+    confirmDeleteBtn?.addEventListener('click', () => {
+      closeDeleteModal(true);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!deleteModal?.classList.contains('hidden')) {
+        closeDeleteModal(false);
+      }
+    });
+
+    valuationsRoot?.addEventListener('click', (event) => {
+      const target = event.target instanceof HTMLElement ? event.target.closest('button[data-action="delete"]') : null;
+      if (!target) return;
+
+      const id = target.getAttribute('data-id');
+      if (!id) return;
+
+      const valuation = currentValuations.find((entry) => String(entry.id) === String(id));
+      if (!valuation) return;
+
+      askDeleteConfirmation(valuation).then((confirmed) => {
+        if (!confirmed) return;
+        handleDeleteValuation(id);
+      });
+    });
 
     // cargar valuaciones al inicio
     loadValuations();

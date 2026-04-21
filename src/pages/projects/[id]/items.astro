@@ -13,20 +13,80 @@ export async function getStaticPaths() { return []; }
   <NavBarDesktop />
 
   <main class="pt-24 px-6 container mx-auto">
-    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer">← Volver al proyecto</a>
+    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer no-print">← Volver al proyecto</a>
     <div class="flex flex-row justify-between mt-4">
       <div>
-        <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold">Proyecto #{projectId}</h1>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold">Proyecto #{projectId}</h1>
+          <div class="relative inline-flex items-center">
+            <button
+              type="button"
+              id="project-status-trigger"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium badge-draft cursor-pointer transition-transform duration-150 hover:scale-[1.03]"
+              aria-haspopup="true"
+              aria-expanded="false"
+            >
+              <span id="project-status-label">draft</span>
+              <span class="material-symbols-outlined text-sm">expand_more</span>
+            </button>
+            <div id="project-status-menu" class="hidden absolute top-full left-0 mt-2 min-w-40 rounded-xl border border-outline-variant/20 bg-surface p-2 shadow-lg z-20">
+              <div class="text-[11px] uppercase tracking-wide text-on-surface-variant px-1 pb-2">Cambiar estado</div>
+              <div id="project-status-options" class="space-y-1"></div>
+              <div id="project-status-feedback" class="hidden text-xs mt-2 px-1"></div>
+            </div>
+          </div>
+        </div>
         <h3 class="text-lg font-semibold mt-1">Partidas asignadas</h3>
         <p class="text-sm text-on-surface-variant">Listado de partidas asociadas a este proyecto.</p>
         <p id="items-lock-message" class="hidden text-sm text-on-surface-variant mt-2"></p>
       </div>
-      <div class="flex items-end gap-2">
+      <div class="flex items-end gap-2 no-print">
+        <button id="print-items-btn" type="button" class="px-3 py-2 border border-outline-variant text-on-surface rounded cursor-pointer shadow-sm hover:brightness-95 transition">
+          <span class="material-symbols-outlined mr-2 align-middle">picture_as_pdf</span>Imprimir PDF
+        </button>
         <button id="add-item-btn" type="button" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer shadow-sm hover:brightness-95 transition">
           <span class="material-symbols-outlined mr-2 align-middle">add</span>Agregar partida
         </button>
       </div>
     </div>
+
+    <section id="print-sheet" class="hidden">
+      <div class="print-header">
+        <img src="/temp-logo.svg" alt="Logo empresa" class="print-logo" />
+      </div>
+      <div class="print-title">PROPUESTA DE SERVICIOS: MANO DE OBRA ESPECIALIZADA</div>
+      <div class="print-line"><strong>PROYECTO:</strong> <span id="print-project-name">—</span></div>
+      <div class="print-line"><strong>FECHA:</strong> <span id="print-date">—</span></div>
+      <div class="print-subtitle">DESCRIPCIÓN DE SERVICIOS (MANO DE OBRA)</div>
+
+      <table class="print-table">
+        <colgroup>
+          <col class="col-item" />
+          <col class="col-desc" />
+          <col class="col-unit" />
+          <col class="col-qty" />
+          <col class="col-unit-price" />
+          <col class="col-total" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Ítem</th>
+            <th>Descripción del Servicio</th>
+            <th>Unidad</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="print-items-body"></tbody>
+        <tfoot>
+          <tr class="print-total-row">
+            <td colspan="5" class="print-total-label">TOTAL PRESUPUESTADO</td>
+            <td id="print-total-cell" class="print-right">0.00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
 
     <div id="items-root" data-id={projectId} class="mt-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(13,28,47,0.04)] border border-outline-variant/10 overflow-y-auto" style="max-height: calc(100vh - 220px);">
       <div class="text-on-surface-variant">Cargando partidas...</div>
@@ -41,8 +101,85 @@ export async function getStaticPaths() { return []; }
     const apiUrl = `${_apiBase.replace(/\/$/, '')}/project_items.php?project_id=${projectId}`;
     const numFmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const addBtn = document.getElementById('add-item-btn');
+    const printBtn = document.getElementById('print-items-btn');
     const lockMessageEl = document.getElementById('items-lock-message');
+    const statusTrigger = document.getElementById('project-status-trigger');
+    const statusMenu = document.getElementById('project-status-menu');
+    const statusLabel = document.getElementById('project-status-label');
+    const statusOptionsRoot = document.getElementById('project-status-options');
+    const statusFeedback = document.getElementById('project-status-feedback');
+    const PROJECT_STATUS_OPTIONS = ['draft', 'active', 'paused', 'closed'];
+    const printProjectNameEl = document.getElementById('print-project-name');
+    const printDateEl = document.getElementById('print-date');
+    const printItemsBody = document.getElementById('print-items-body');
+    const printTotalCell = document.getElementById('print-total-cell');
     let projectStatus = 'draft';
+    let detachStatusMenuHandlers = null;
+    let projectData = null;
+
+    function formatPrintDate(date = new Date()) {
+      return new Intl.DateTimeFormat('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }).format(date);
+    }
+
+    function updatePrintHeader() {
+      if (printDateEl) {
+        printDateEl.textContent = formatPrintDate(new Date());
+      }
+      if (!projectData) return;
+
+      const projectName = projectData?.name || projectData?.project_name || projectData?.title || `Proyecto #${projectId || ''}`;
+
+      if (printProjectNameEl) printProjectNameEl.textContent = projectName;
+    }
+
+    function renderPrintRows(items) {
+      if (!printItemsBody) return;
+
+      const list = Array.isArray(items) ? items : [];
+      let grandTotal = 0;
+      if (list.length === 0) {
+        printItemsBody.innerHTML = '<tr><td colspan="6">Sin partidas registradas.</td></tr>';
+        if (printTotalCell) printTotalCell.textContent = '0.00';
+        return;
+      }
+
+      printItemsBody.innerHTML = list.map((it, index) => {
+        const description = it.item_name || it.name || `Partida ${index + 1}`;
+        const qty = Number(it.qty || 0);
+        const unit = it.unit || '';
+        const unitCost = Number(it.unit_cost || 0);
+        const total = Number(it.total_cost || (qty * unitCost) || 0);
+        grandTotal += total;
+        return `
+          <tr>
+            <td class="print-center" style="text-align:center;">${index + 1}</td>
+            <td>${description}</td>
+            <td class="print-center" style="text-align:center;">${unit}</td>
+            <td class="print-center" style="text-align:center;">${numFmt.format(qty)}</td>
+            <td class="print-center" style="text-align:center;">${numFmt.format(unitCost)}</td>
+            <td class="print-right" style="text-align:right;">${numFmt.format(total)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      if (printTotalCell) {
+        printTotalCell.textContent = numFmt.format(grandTotal);
+      }
+    }
+
+    function getStatusBadgeClass(status) {
+      return status === 'active'
+        ? 'badge-active'
+        : status === 'draft'
+          ? 'badge-draft'
+          : status === 'paused'
+            ? 'badge-paused'
+            : '';
+    }
 
     function isProjectLocked() {
       return projectStatus !== 'draft';
@@ -66,6 +203,129 @@ export async function getStaticPaths() { return []; }
         addBtn.classList.toggle('hover:brightness-95', !isProjectLocked());
         addBtn.title = isProjectLocked() ? 'Solo se puede modificar un proyecto en draft' : '';
       }
+
+      if (statusTrigger instanceof HTMLButtonElement) {
+        statusLabel.textContent = projectStatus;
+        statusTrigger.classList.remove('badge-active', 'badge-draft', 'badge-paused');
+        statusTrigger.classList.add(getStatusBadgeClass(projectStatus));
+        statusTrigger.disabled = isProjectLocked();
+        statusTrigger.classList.toggle('cursor-not-allowed', isProjectLocked());
+        statusTrigger.classList.toggle('opacity-85', isProjectLocked());
+        statusTrigger.classList.toggle('cursor-pointer', !isProjectLocked());
+        statusTrigger.title = isProjectLocked() ? 'Proyecto bloqueado: solo se puede modificar en draft' : 'Cambiar estado del proyecto';
+      }
+    }
+
+    function setStatusMenuOpen(open) {
+      if (!statusTrigger || !statusMenu) return;
+      statusMenu.classList.toggle('hidden', !open);
+      statusTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function setStatusFeedback(message = '', variant = 'muted') {
+      if (!statusFeedback) return;
+      statusFeedback.textContent = message;
+      statusFeedback.className = `text-xs mt-2 px-1 ${variant === 'error' ? 'text-error' : variant === 'success' ? 'text-emerald-600' : 'text-on-surface-variant'}`;
+      statusFeedback.classList.toggle('hidden', message === '');
+    }
+
+    function renderStatusOptions() {
+      if (!statusOptionsRoot) return;
+      statusOptionsRoot.innerHTML = PROJECT_STATUS_OPTIONS.map((option) => `
+        <button
+          type="button"
+          data-status-option="${option}"
+          class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${option === projectStatus ? 'bg-primary text-on-primary' : 'hover:bg-surface-container-high text-on-surface'}"
+        >
+          ${option}
+        </button>
+      `).join('');
+    }
+
+    async function updateProjectStatus(nextStatus) {
+      if (!projectId) return;
+      const currentStatus = projectStatus;
+
+      setStatusFeedback('Guardando...');
+
+      try {
+        const response = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(projectId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: nextStatus })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || result.message || 'No se pudo actualizar el estado');
+        }
+
+        projectStatus = nextStatus;
+        setStatusFeedback('Estado actualizado', 'success');
+        setStatusMenuOpen(false);
+        applyProjectLockUI();
+        renderStatusOptions();
+        await loadItems();
+        showToast(`Estado cambiado de ${currentStatus} a ${nextStatus}`, 'success');
+      } catch (error) {
+        console.error('Failed to update project status', error);
+        setStatusFeedback(error instanceof Error ? error.message : 'No se pudo actualizar el estado', 'error');
+        showToast(error instanceof Error ? error.message : 'No se pudo actualizar el estado', 'error');
+      }
+    }
+
+    function attachStatusMenuHandlers() {
+      if (!statusTrigger || !statusMenu || !statusOptionsRoot) return;
+
+      if (typeof detachStatusMenuHandlers === 'function') {
+        detachStatusMenuHandlers();
+        detachStatusMenuHandlers = null;
+      }
+
+      const handleTriggerClick = (event) => {
+        event.stopPropagation();
+        if (isProjectLocked()) return;
+        setStatusMenuOpen(statusMenu.classList.contains('hidden'));
+      };
+
+      const handleOptionClick = async (event) => {
+        const button = event.target instanceof HTMLElement ? event.target.closest('[data-status-option]') : null;
+        if (!button) return;
+        event.stopPropagation();
+
+        const nextStatus = button.getAttribute('data-status-option');
+        if (!nextStatus || nextStatus === projectStatus) {
+          setStatusMenuOpen(false);
+          return;
+        }
+
+        button.setAttribute('disabled', 'true');
+        await updateProjectStatus(nextStatus);
+        button.removeAttribute('disabled');
+      };
+
+      const handleClickOutside = (event) => {
+        if (!statusMenu.contains(event.target) && !statusTrigger.contains(event.target)) {
+          setStatusMenuOpen(false);
+        }
+      };
+
+      const handleEscape = (event) => {
+        if (event.key === 'Escape') {
+          setStatusMenuOpen(false);
+        }
+      };
+
+      statusTrigger.addEventListener('click', handleTriggerClick);
+      statusOptionsRoot.addEventListener('click', handleOptionClick);
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+
+      detachStatusMenuHandlers = () => {
+        statusTrigger.removeEventListener('click', handleTriggerClick);
+        statusOptionsRoot.removeEventListener('click', handleOptionClick);
+        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener('keydown', handleEscape);
+      };
     }
 
     // attempt to load project name to display in header
@@ -80,15 +340,21 @@ export async function getStaticPaths() { return []; }
         if (!res.ok) throw new Error('Project fetch failed');
         const data = await res.json();
         const project = Array.isArray(data) ? data[0] : (data.data || data.project || data);
+        projectData = project || null;
         projectStatus = (project?.status ?? project?.state ?? 'draft').toString() || 'draft';
+        renderStatusOptions();
         applyProjectLockUI();
+        attachStatusMenuHandlers();
+        updatePrintHeader();
         const name = project?.name || project?.project_name || project?.title || null;
         if (name) {
           projectNameEl.textContent = name;
           return;
         }
       } catch (e) {
+        renderStatusOptions();
         applyProjectLockUI();
+        updatePrintHeader();
       }
 
       if (!projectNameEl.textContent || projectNameEl.textContent.startsWith('Proyecto #')) {
@@ -172,12 +438,19 @@ export async function getStaticPaths() { return []; }
         if (!res.ok) throw new Error('Fetch failed');
         let data = await res.json();
         const items = Array.isArray(data) ? data : (data.data || []);
+        renderPrintRows(items);
         renderItems(items);
       } catch (e) {
         console.error(e);
+        renderPrintRows([]);
         root.innerHTML = '<div class="text-error">No se pudieron cargar las partidas.</div>';
       }
     }
+
+    printBtn?.addEventListener('click', () => {
+      updatePrintHeader();
+      window.print();
+    });
 
     function renderItems(items) {
       if (!items || items.length === 0) {
@@ -197,7 +470,7 @@ export async function getStaticPaths() { return []; }
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${it.unit || ''}</td>
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${fmt.format(qty)}</td>
           <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10">${fmt.format(unitCost)}</td>
-          <td class="px-3 py-1 align-center text-sm text-center border-r border-outline-variant/10 font-medium">${fmt.format(totalCost)}</td>
+          <td class="px-3 py-1 align-center text-sm text-right border-r border-outline-variant/10 font-medium">${fmt.format(totalCost)}</td>
           <td class="px-3 py-1 align-center text-sm text-center">
             ${isProjectLocked()
               ? '<span class="text-xs text-on-surface-variant">Bloqueado</span>'
@@ -229,7 +502,7 @@ export async function getStaticPaths() { return []; }
                   <th class="px-3 py-1 text-center">Unidad</th>
                   <th class="px-3 py-1 text-center">Cantidad</th>
                   <th class="px-3 py-1 text-center">Costo unit.</th>
-                  <th class="px-3 py-1 text-center">Total</th>
+                  <th class="px-3 py-1 text-right">Total</th>
                   <th class="px-3 py-1 text-center">Acciones</th>
                 </tr>
               </thead>
@@ -238,7 +511,7 @@ export async function getStaticPaths() { return []; }
               </tbody>
               <tfoot>
                 <tr>
-                  <td colspan="5" class="px-3 py-1 text-sm font-semibold text-right">Total presupuestado</td>
+                  <td colspan="4" class="px-3 py-1 text-sm font-semibold text-right">Total presupuestado</td>
                   <td class="px-3 py-1 text-sm font-semibold text-right">${fmt.format(total)}</td>
                 </tr>
               </tfoot>
@@ -684,4 +957,130 @@ export async function getStaticPaths() { return []; }
         </div>
       </div>
     </div>
+
+    <style>
+      #print-sheet {
+        display: none;
+      }
+
+      @media print {
+        nav,
+        .no-print,
+        #items-root,
+        #edit-item-modal,
+        #add-item-modal,
+        #confirm-modal,
+        #toast-container {
+          display: none !important;
+        }
+
+        main {
+          padding: 0 !important;
+          margin: 0 !important;
+          max-width: 100% !important;
+        }
+
+        #print-sheet {
+          display: block !important;
+          font-size: 12px;
+          color: #111;
+          padding: 0;
+          margin: 0;
+        }
+
+        .print-title {
+          font-weight: 700;
+          text-transform: uppercase;
+          margin-bottom: 10px;
+        }
+
+        .print-header {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 8px;
+        }
+
+        .print-logo {
+          width: 120px;
+          height: auto;
+          object-fit: contain;
+        }
+
+        .print-subtitle {
+          font-weight: 700;
+          text-transform: uppercase;
+          margin-top: 10px;
+          margin-bottom: 8px;
+        }
+
+        .print-line {
+          margin-bottom: 4px;
+        }
+
+        .print-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 8px;
+          table-layout: fixed;
+        }
+
+        .print-table col.col-item { width: 8%; }
+        .print-table col.col-desc { width: 44%; }
+        .print-table col.col-unit { width: 10%; }
+        .print-table col.col-qty { width: 12%; }
+        .print-table col.col-unit-price { width: 13%; }
+        .print-table col.col-total { width: 13%; }
+
+        .print-table th,
+        .print-table td {
+          border: 1px solid #111;
+          padding: 6px;
+          vertical-align: top;
+          word-wrap: break-word;
+        }
+
+        .print-table th {
+          font-weight: 700;
+          text-align: left;
+        }
+
+        .print-table th:nth-child(3),
+        .print-table td:nth-child(3),
+        .print-table th:nth-child(4),
+        .print-table td:nth-child(4),
+        .print-table th:nth-child(5),
+        .print-table td:nth-child(5) {
+          text-align: center;
+        }
+
+        .print-table th:nth-child(1),
+        .print-table td:nth-child(1) {
+          text-align: center;
+        }
+
+        .print-table th:nth-child(6),
+        .print-table td:nth-child(6) {
+          text-align: right;
+        }
+
+        .print-table td.print-center {
+          text-align: center !important;
+        }
+
+        .print-table td.print-right {
+          text-align: right !important;
+        }
+
+        .print-total-row td {
+          font-weight: 700;
+          border-top: 2px solid #111;
+          background: #f5f5f5;
+        }
+
+        .print-total-label {
+          text-align: right;
+          letter-spacing: 0.3px;
+        }
+      }
+    </style>
 </MainLayout>

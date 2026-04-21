@@ -95,7 +95,7 @@ export async function getStaticPaths() { return []; }
 </MainLayout>
 
 <!-- Modal: seleccionar partida -->
-<div id="partida-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+<div id="partida-modal" class="hidden fixed inset-0 z-50 items-center justify-center px-4">
   <div class="absolute inset-0 bg-black/40" data-close-modal></div>
   <div class="bg-white dark:bg-surface rounded-lg shadow-lg w-full max-w-3xl relative">
     <header class="flex items-center justify-between p-4 border-b">
@@ -273,6 +273,26 @@ export async function getStaticPaths() { return []; }
   let valuedQuantities = {}; // map project_item_id -> cantidad valuada
   let selectedPartidaId = null;
 
+  function parseCurrencyTextToNumber(text) {
+    if (!text) return 0;
+    const normalized = String(text).replace(/[^0-9,.-]/g, '').replace(/,/g, '');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function recalculateMainTotal() {
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    const totalCell = document.querySelector('table.min-w-200 tfoot td:last-child');
+    if (!mainTbody || !totalCell) return;
+    let total = 0;
+    mainTbody.querySelectorAll('tr[data-project-item-id]').forEach((tr) => {
+      const rowTotal = Number(tr.getAttribute('data-row-total') || 0);
+      total += Number.isFinite(rowTotal) ? rowTotal : 0;
+    });
+    const formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(total);
+    totalCell.textContent = formatted;
+  }
+
   function resetModalSteps() {
     // show step 1
     const step1 = document.getElementById('modal-step-1');
@@ -336,6 +356,7 @@ export async function getStaticPaths() { return []; }
   function openModal() {
     if (!modal) return;
     modal.classList.remove('hidden');
+    modal.classList.add('flex');
     resetModalSteps();
     modal.querySelector('input, button')?.focus();
     // cargar datos
@@ -371,6 +392,7 @@ export async function getStaticPaths() { return []; }
   function closeModal() {
     if (!modal) return;
     modal.classList.add('hidden');
+    modal.classList.remove('flex');
     selectedPartidaId = null;
     resetModalSteps();
   }
@@ -388,7 +410,13 @@ export async function getStaticPaths() { return []; }
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.data || []);
-        projectItems = list.map(it => ({ id: String(it.id || it.item_id || it.itemId), nombre: it.item_name || it.name || '', unidad: it.unit || '', qty: Number(it.qty || it.Qty || 0) }));
+        projectItems = list.map(it => ({
+          id: String(it.id || it.item_id || it.itemId),
+          nombre: it.item_name || it.name || '',
+          unidad: it.unit || '',
+          qty: Number(it.qty || it.Qty || 0),
+          unit_cost: Number(it.unit_cost || it.unitCost || 0)
+        }));
       }
 
       // 2) si hay una valuación existente (id en querystring ?valuation_id=), intentar obtener las partidas ya valuadas y sus cantidades
@@ -563,8 +591,9 @@ export async function getStaticPaths() { return []; }
     const partida = projectItems.find(p => String(p.id) === String(selectedPartidaId));
     if (!partida) return closeModal();
     const qtyValuedPrev = Number(valuedQuantities[String(partida.id)] || 0);
-    const porValuarPrev = Number((partida.qty || 0) - qtyValuedPrev);
     const porValuarAfter = Number((partida.qty || 0) - (qtyValuedPrev + v));
+    const unitCost = Number(partida.unit_cost || 0);
+    const rowTotal = Number((v * unitCost).toFixed(2));
 
     // insertar fila en la tabla principal con la cantidad ingresada
     const tbody = document.querySelector('table.min-w-200 tbody');
@@ -573,12 +602,14 @@ export async function getStaticPaths() { return []; }
       tr.className = 'border-t border-outline-variant/10 bg-surface-container-high';
       tr.setAttribute('data-project-item-id', String(partida.id));
       tr.setAttribute('data-added-qty', String(v));
+      tr.setAttribute('data-unit-cost', String(unitCost));
+      tr.setAttribute('data-row-total', String(rowTotal));
       tr.innerHTML = `
         <td class="px-3 py-3 text-sm">${partida.nombre}</td>
         <td class="px-3 py-3 text-sm text-center">${partida.unidad || ''}</td>
         <td class="px-3 py-3 text-sm text-right">${v.toFixed(2)}</td>
-        <td class="px-3 py-3 text-sm text-right">${(qtyValuedPrev + v).toFixed(2)}</td>
-        <td class="px-3 py-3 text-sm text-right font-medium">${porValuarAfter.toFixed(2)}</td>
+        <td class="px-3 py-3 text-sm text-right">${unitCost.toFixed(2)}</td>
+        <td class="px-3 py-3 text-sm text-right font-medium">${rowTotal.toFixed(2)}</td>
         <td class="px-3 py-3 text-sm text-center">
           <button class="p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
             <span class="material-symbols-outlined">edit</span>
@@ -591,6 +622,7 @@ export async function getStaticPaths() { return []; }
       tbody.appendChild(tr);
       // update excluded UI ids so modal excludes it if reopened
       excludedUiIds.push(String(partida.id));
+      recalculateMainTotal();
       // actualizar estado del botón Crear valuación
       updateCreateButton();
 
@@ -612,6 +644,7 @@ export async function getStaticPaths() { return []; }
           if (alreadyValuedIds.includes(pidKey) && remaining > 0) {
             alreadyValuedIds = alreadyValuedIds.filter(x => String(x) !== pidKey);
           }
+          recalculateMainTotal();
           updateCreateButton();
         });
       }
@@ -625,5 +658,83 @@ export async function getStaticPaths() { return []; }
     }
 
     closeModal();
+  });
+
+  createBtn?.addEventListener('click', async () => {
+    if (!(createBtn instanceof HTMLButtonElement)) return;
+
+    validateFormFields();
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    const rows = mainTbody ? Array.from(mainTbody.querySelectorAll('tr[data-project-item-id]')) : [];
+    if (!rows.length) {
+      alert('Agrega al menos una partida antes de crear la valuación.');
+      return;
+    }
+
+    const project_id = Number(projectNameEl?.dataset.projectId || 0);
+    if (!project_id) {
+      alert('No se pudo determinar el proyecto.');
+      return;
+    }
+
+    const date = String(dateInput?.value || '').trim();
+    const valuator = String(valuatorInput?.value || '').trim();
+    const status = String(stateSelect?.value || '').trim().toLowerCase();
+    const notes = String(descInput?.value || '').trim();
+    if (!date || !valuator || !status || !notes) {
+      alert('Completa los campos requeridos.');
+      return;
+    }
+
+    const items = rows.map((tr) => {
+      const project_item_id = Number(tr.getAttribute('data-project-item-id') || 0);
+      const qty = Number(tr.getAttribute('data-added-qty') || 0);
+      const unit_cost = Number(tr.getAttribute('data-unit-cost') || 0);
+      return { project_item_id, qty, unit_cost };
+    }).filter((it) => it.project_item_id > 0 && it.qty > 0);
+
+    if (!items.length) {
+      alert('No hay partidas válidas para guardar.');
+      return;
+    }
+
+    const totalCell = document.querySelector('table.min-w-200 tfoot td:last-child');
+    const totalAmount = totalCell ? parseCurrencyTextToNumber(totalCell.textContent) : 0;
+
+    const payload = {
+      project_id,
+      date,
+      status,
+      valuator,
+      notes,
+      currency: 'USD',
+      amount: totalAmount,
+      items
+    };
+
+    const oldLabel = createBtn.textContent;
+    createBtn.disabled = true;
+    createBtn.textContent = 'Creando...';
+
+    try {
+      const base = _apiBase.replace(/\/$/, '');
+      const res = await fetch(`${base}/valuations.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'No se pudo crear la valuación');
+      }
+      window.location.href = `/projects/${project_id}/valuations`;
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : 'No se pudo crear la valuación');
+    } finally {
+      createBtn.disabled = false;
+      createBtn.textContent = oldLabel;
+      updateCreateButton();
+    }
   });
 </script>

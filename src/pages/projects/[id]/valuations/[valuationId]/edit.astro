@@ -1,0 +1,664 @@
+---
+import MainLayout from '../../../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const params = (Astro.params as Record<string, string> | undefined) ?? {};
+const projectId = params.id ?? null;
+const valuationId = params.valuationId ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}/valuations`} class="text-sm text-primary cursor-pointer">← Volver a valuaciones</a>
+
+    <div class="mt-4 bg-surface p-6 rounded-xl shadow-sm border border-outline-variant/10">
+      <div class="flex items-center justify-between mb-4 gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Editar valuación</h1>
+          <p class="text-sm text-on-surface-variant">Modifica la información y partidas de la valuación #{valuationId}.</p>
+        </div>
+        <div>
+          <div class="text-sm text-on-surface-variant text-end">Proyecto:</div>
+          <strong id="project-name" class="text-2xl" data-project-id={projectId}>Proyecto</strong>
+        </div>
+      </div>
+
+      <div id="edit-error" class="hidden mb-4 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error"></div>
+
+      <form class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="text-xs text-on-surface-variant">Fecha</label>
+            <input id="valuation-date" type="date" required class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+          </div>
+          <div>
+            <label class="text-xs text-on-surface-variant">Valuador</label>
+            <input id="valuator" type="text" required placeholder="Nombre del valuador" class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" />
+          </div>
+          <div>
+            <label class="text-xs text-on-surface-variant">Estado</label>
+            <select id="valuation-state" required class="w-full mt-1 px-3 py-2 rounded border border-outline-variant">
+              <option>Borrador</option>
+              <option>Aprobada</option>
+              <option>En revisión</option>
+              <option>Rechazada</option>
+              <option>Cobrada</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs text-on-surface-variant">Descripción</label>
+          <textarea id="valuation-desc" rows="3" required class="w-full mt-1 px-3 py-2 rounded border border-outline-variant" placeholder="Notas u observaciones de la valuación"></textarea>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-medium">Partidas incluidas</div>
+            <button id="open-add-item" type="button" data-project-id={projectId} disabled class="text-sm px-3 py-1 bg-primary text-on-primary rounded cursor-pointer">Agregar partida</button>
+          </div>
+
+          <div class="overflow-x-auto bg-surface-container-low rounded border border-outline-variant/10">
+            <table class="w-full min-w-200">
+              <thead class="text-xs text-on-surface-variant">
+                <tr>
+                  <th class="px-3 py-2 text-left">Partida</th>
+                  <th class="px-3 py-2 text-center">Unidad</th>
+                  <th class="px-3 py-2 text-right">Cantidad</th>
+                  <th class="px-3 py-2 text-right">Costo unit.</th>
+                  <th class="px-3 py-2 text-right">Total</th>
+                  <th class="px-3 py-2 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" class="px-3 py-2 text-sm font-semibold text-right">Total valuación</td>
+                  <td class="px-3 py-2 text-sm font-semibold text-right">$ 0.00</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <a href={`/projects/${projectId}/valuations`} class="px-3 py-2 rounded border border-outline-variant cursor-pointer">Cancelar</a>
+          <button id="save-valuation" type="button" disabled class="px-4 py-2 bg-primary text-on-primary rounded cursor-pointer">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <div id="partida-modal" class="hidden fixed inset-0 z-50 items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/40" data-close-modal></div>
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl relative">
+      <header class="flex items-center justify-between p-4 border-b">
+        <div>
+          <h3 class="text-lg font-semibold">Seleccionar partida para valuar</h3>
+          <p id="modal-valuation" class="text-xs text-on-surface-variant">Valuación #{valuationId}</p>
+        </div>
+        <button data-close-modal class="px-3 py-1 cursor-pointer">✕</button>
+      </header>
+      <div class="p-4">
+        <div id="modal-step-1" class="space-y-3">
+          <div class="flex gap-2">
+            <input id="partida-search" type="search" placeholder="Buscar nombre" class="flex-1 px-3 py-2 rounded border" />
+            <div id="partida-count" class="text-sm text-on-surface-variant self-center">0 partidas</div>
+          </div>
+
+          <div class="overflow-y-auto max-h-64 border rounded">
+            <table id="partida-table" class="w-full text-sm">
+              <thead class="text-on-surface-variant text-xs">
+                <tr>
+                  <th class="p-2 w-6">&nbsp;</th>
+                  <th class="p-2 text-left">Nombre de la partida</th>
+                  <th class="p-2 text-right">Unidad</th>
+                  <th class="p-2 text-right">Cantidad</th>
+                  <th class="p-2 text-right">Cantidad en valuación</th>
+                  <th class="p-2 text-right">Disponible</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="empty-state" class="text-center text-on-surface-variant hidden">No hay partidas disponibles para agregar.</div>
+        </div>
+
+        <div id="modal-step-2" class="hidden space-y-3">
+          <div>
+            <div class="text-sm text-on-surface-variant">Partida seleccionada</div>
+            <div id="selected-name" class="text-base font-medium mt-1">—</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <div class="text-xs text-on-surface-variant">Unidad</div>
+              <div id="selected-unit" class="mt-1">—</div>
+            </div>
+            <div>
+              <div class="text-xs text-on-surface-variant">Cantidad total</div>
+              <div id="selected-qty" class="mt-1">0.00</div>
+            </div>
+            <div>
+              <div class="text-xs text-on-surface-variant">Cantidad en valuación</div>
+              <div id="selected-qty-valued" class="mt-1">0.00</div>
+            </div>
+            <div>
+              <div class="text-xs text-on-surface-variant">Disponible</div>
+              <div id="selected-por-valuar" class="mt-1">0.00</div>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs text-on-surface-variant">Cantidad a agregar</label>
+            <input id="cantidad-a-valuar" type="number" step="0.01" min="0" class="w-full mt-1 px-3 py-2 rounded border" />
+            <div id="cantidad-error" class="text-xs text-rose-600 mt-1 hidden">La cantidad no puede ser mayor al disponible.</div>
+          </div>
+        </div>
+      </div>
+      <footer class="flex items-center justify-end gap-2 p-4 border-t">
+        <button data-close-modal class="px-3 py-2 rounded border cursor-pointer">Cancelar</button>
+        <button id="back-partida" class="px-3 py-2 rounded border hidden cursor-pointer">Atrás</button>
+        <button id="next-partida" disabled class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer">Siguiente</button>
+        <button id="finish-partida" disabled class="px-3 py-2 bg-primary text-on-primary rounded hidden cursor-pointer">Finalizar</button>
+      </footer>
+    </div>
+  </div>
+
+  <NavBarMobil />
+</MainLayout>
+
+<script type="module">
+  const _meta = document.querySelector('meta[name="api-base"]');
+  const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+  const base = _apiBase.replace(/\/$/, '');
+  const projectNameEl = document.getElementById('project-name');
+  const projectId = String(projectNameEl?.dataset.projectId || '');
+  const valuationId = window.location.pathname.split('/').filter(Boolean).slice(-2)[0] || '';
+
+  const editError = document.getElementById('edit-error');
+  const openBtn = document.getElementById('open-add-item');
+  const saveBtn = document.getElementById('save-valuation');
+  const dateInput = document.getElementById('valuation-date');
+  const valuatorInput = document.getElementById('valuator');
+  const stateSelect = document.getElementById('valuation-state');
+  const descInput = document.getElementById('valuation-desc');
+
+  const modal = document.getElementById('partida-modal');
+  const modalOverlayButtons = modal ? modal.querySelectorAll('[data-close-modal]') : [];
+  const partidaTableBody = document.querySelector('#partida-table tbody');
+  const partidaSearch = document.getElementById('partida-search');
+  const partidaCount = document.getElementById('partida-count');
+  const emptyState = document.getElementById('empty-state');
+
+  const nextBtn = document.getElementById('next-partida');
+  const backBtn = document.getElementById('back-partida');
+  const finishBtn = document.getElementById('finish-partida');
+  const cantidadInput = document.getElementById('cantidad-a-valuar');
+  const cantidadError = document.getElementById('cantidad-error');
+  const selectedNameEl = document.getElementById('selected-name');
+  const selectedUnitEl = document.getElementById('selected-unit');
+  const selectedQtyEl = document.getElementById('selected-qty');
+  const selectedQtyValuedEl = document.getElementById('selected-qty-valued');
+  const selectedPorValuarEl = document.getElementById('selected-por-valuar');
+
+  let projectItems = [];
+  let excludedUiIds = [];
+  let valuedQuantities = {};
+  let selectedPartidaId = null;
+
+  function setError(message = '') {
+    if (!editError) return;
+    editError.textContent = message;
+    editError.classList.toggle('hidden', message === '');
+  }
+
+  function extractValuatorAndObservation(rawNotes) {
+    const source = String(rawNotes ?? '');
+    const match = source.match(/^\s*valuador\s*:\s*(.+?)(?:\r?\n\r?\n|\r?\n|$)([\s\S]*)$/i);
+    if (!match) {
+      return { valuator: '', observation: source.trim() };
+    }
+    return {
+      valuator: String(match[1] || '').trim(),
+      observation: String(match[2] || '').trim()
+    };
+  }
+
+  function composeNotes(valuator, notes) {
+    const cleanValuator = String(valuator || '').trim();
+    const cleanNotes = String(notes || '').trim();
+    if (!cleanValuator) return cleanNotes;
+    return cleanNotes ? `Valuador: ${cleanValuator}\n\n${cleanNotes}` : `Valuador: ${cleanValuator}`;
+  }
+
+  function parseCurrencyTextToNumber(text) {
+    if (!text) return 0;
+    const normalized = String(text).replace(/[^0-9,.-]/g, '').replace(/,/g, '');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function recalculateMainTotal() {
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    const totalCell = document.querySelector('table.min-w-200 tfoot td:last-child');
+    if (!mainTbody || !totalCell) return;
+
+    let total = 0;
+    mainTbody.querySelectorAll('tr[data-project-item-id]').forEach((tr) => {
+      const rowTotal = Number(tr.getAttribute('data-row-total') || 0);
+      total += Number.isFinite(rowTotal) ? rowTotal : 0;
+    });
+
+    const formatted = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(total);
+    totalCell.textContent = formatted;
+  }
+
+  function updateSaveButton() {
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    const hasRows = mainTbody && mainTbody.querySelector('tr[data-project-item-id]');
+    if (saveBtn) {
+      saveBtn.disabled = !hasRows;
+      saveBtn.classList.toggle('opacity-50', !hasRows);
+      saveBtn.classList.toggle('cursor-not-allowed', !hasRows);
+    }
+  }
+
+  function validateFormFields() {
+    const dateValid = dateInput && String(dateInput.value || '').trim() !== '';
+    const valuatorValid = valuatorInput && String(valuatorInput.value || '').trim() !== '';
+    const stateValid = stateSelect && String(stateSelect.value || '').trim() !== '';
+    const descValid = descInput && String(descInput.value || '').trim() !== '';
+
+    const canAdd = Boolean(dateValid && valuatorValid && stateValid && descValid);
+    if (openBtn) {
+      openBtn.disabled = !canAdd;
+      openBtn.classList.toggle('opacity-50', !canAdd);
+      openBtn.classList.toggle('cursor-not-allowed', !canAdd);
+    }
+  }
+
+  function attachDeleteHandler(rowElement, partida) {
+    const deleteBtn = rowElement.querySelector('button.btn-delete');
+    if (!deleteBtn) return;
+    deleteBtn.addEventListener('click', () => {
+      const pidKey = String(partida.id);
+      const added = Number(rowElement.getAttribute('data-added-qty') || 0);
+      rowElement.remove();
+      excludedUiIds = excludedUiIds.filter((x) => String(x) !== pidKey);
+      valuedQuantities[pidKey] = Math.max(0, Number(valuedQuantities[pidKey] || 0) - added);
+      recalculateMainTotal();
+      updateSaveButton();
+    });
+  }
+
+  function appendMainRow(partida, qty, unitCost) {
+    const tbody = document.querySelector('table.min-w-200 tbody');
+    if (!tbody) return;
+
+    const rowTotal = Number((qty * unitCost).toFixed(2));
+    const tr = document.createElement('tr');
+    tr.className = 'border-t border-outline-variant/10 bg-surface-container-high';
+    tr.setAttribute('data-project-item-id', String(partida.id));
+    tr.setAttribute('data-added-qty', String(qty));
+    tr.setAttribute('data-unit-cost', String(unitCost));
+    tr.setAttribute('data-row-total', String(rowTotal));
+    tr.innerHTML = `
+      <td class="px-3 py-3 text-sm">${partida.nombre}</td>
+      <td class="px-3 py-3 text-sm text-center">${partida.unidad || ''}</td>
+      <td class="px-3 py-3 text-sm text-right">${qty.toFixed(2)}</td>
+      <td class="px-3 py-3 text-sm text-right">${unitCost.toFixed(2)}</td>
+      <td class="px-3 py-3 text-sm text-right font-medium">${rowTotal.toFixed(2)}</td>
+      <td class="px-3 py-3 text-sm text-center">
+        <button class="p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer btn-delete" title="Eliminar">
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+    excludedUiIds.push(String(partida.id));
+    valuedQuantities[String(partida.id)] = Number(valuedQuantities[String(partida.id)] || 0) + Number(qty || 0);
+    attachDeleteHandler(tr, partida);
+    recalculateMainTotal();
+    updateSaveButton();
+  }
+
+  async function loadProjectName() {
+    if (!projectNameEl || !projectId) return;
+    const extractFirst = (resData) => {
+      if (!resData) return null;
+      if (Array.isArray(resData)) return resData[0] || null;
+      if (resData.data && Array.isArray(resData.data)) return resData.data[0] || null;
+      if (typeof resData === 'object') return resData;
+      return null;
+    };
+
+    try {
+      const res = await fetch(`${base}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const first = extractFirst(data);
+        if (first && (String(first.id) === String(projectId) || String(first.project_id) === String(projectId))) {
+          projectNameEl.textContent = first.name || first.project_name || first.title || `Proyecto #${projectId}`;
+          return;
+        }
+      }
+    } catch (e) { }
+
+    projectNameEl.textContent = `Proyecto #${projectId}`;
+  }
+
+  async function loadProjectItems() {
+    projectItems = [];
+    valuedQuantities = {};
+    excludedUiIds = [];
+
+    const res = await fetch(`${base}/project_items.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('No se pudieron cargar las partidas del proyecto');
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.data || []);
+    projectItems = list.map((it) => ({
+      id: String(it.id || it.item_id || it.itemId),
+      nombre: it.item_name || it.name || '',
+      unidad: it.unit || '',
+      qty: Number(it.qty || 0),
+      unit_cost: Number(it.unit_cost || it.unitCost || 0)
+    }));
+  }
+
+  async function loadExistingValuation() {
+    if (!valuationId) throw new Error('No se encontró el id de la valuación en la ruta');
+
+    const valuationRes = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    if (!valuationRes.ok) throw new Error('No se pudo cargar la valuación');
+    const valuationPayload = await valuationRes.json();
+    const valuation = valuationPayload?.data || null;
+    if (!valuation) throw new Error('La valuación no existe o fue eliminada');
+
+    if (String(valuation.project_id || '') !== String(projectId)) {
+      throw new Error('La valuación no pertenece a este proyecto');
+    }
+
+    if (dateInput) dateInput.value = valuation.date || '';
+    if (stateSelect) stateSelect.value = valuation.status || 'Borrador';
+    const parsedNotes = extractValuatorAndObservation(valuation.notes || '');
+    if (valuatorInput) valuatorInput.value = parsedNotes.valuator || '';
+    if (descInput) descInput.value = parsedNotes.observation || '';
+
+    const itemsRes = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    if (!itemsRes.ok) throw new Error('No se pudieron cargar los ítems de la valuación');
+    const itemsPayload = await itemsRes.json();
+    const items = Array.isArray(itemsPayload?.data) ? itemsPayload.data : [];
+
+    const tbody = document.querySelector('table.min-w-200 tbody');
+    if (tbody) tbody.innerHTML = '';
+
+    for (const item of items) {
+      const pid = String(item.project_item_id || '');
+      const partida = projectItems.find((p) => String(p.id) === pid);
+      if (!partida) continue;
+
+      const qty = Number(item.qty || 0);
+      const unitCost = Number(item.unit_cost || partida.unit_cost || 0);
+      appendMainRow(partida, qty, unitCost);
+    }
+
+    validateFormFields();
+    updateSaveButton();
+  }
+
+  function resetModalSteps() {
+    const step1 = document.getElementById('modal-step-1');
+    const step2 = document.getElementById('modal-step-2');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+    if (backBtn) backBtn.classList.add('hidden');
+    if (finishBtn) {
+      finishBtn.classList.add('hidden');
+      finishBtn.disabled = true;
+    }
+    if (nextBtn) {
+      nextBtn.classList.remove('hidden');
+      nextBtn.disabled = true;
+    }
+    if (cantidadInput) cantidadInput.value = '';
+    if (cantidadError) cantidadError.classList.add('hidden');
+  }
+
+  function renderList(filter) {
+    if (!partidaTableBody) return;
+    const q = String(filter || '').toLowerCase().trim();
+    const filtered = projectItems.filter((p) => {
+      return !excludedUiIds.includes(String(p.id)) && (q === '' || String(p.nombre).toLowerCase().includes(q));
+    });
+
+    partidaTableBody.innerHTML = '';
+    if (filtered.length === 0) {
+      emptyState?.classList.remove('hidden');
+      if (partidaCount) partidaCount.textContent = '0 partidas';
+      return;
+    }
+
+    emptyState?.classList.add('hidden');
+    if (partidaCount) partidaCount.textContent = `${filtered.length} partida${filtered.length > 1 ? 's' : ''}`;
+
+    for (const p of filtered) {
+      const qtyValued = Number(valuedQuantities[String(p.id)] || 0);
+      const porValuar = Math.max(0, Number((p.qty || 0) - qtyValued));
+      const tr = document.createElement('tr');
+      tr.className = 'border-t cursor-pointer hover:bg-surface-dim';
+      tr.dataset.id = p.id;
+      tr.innerHTML = `
+        <td class="p-2"><input type="radio" name="partida-select" value="${p.id}" /></td>
+        <td class="p-2">${p.nombre}</td>
+        <td class="p-2 text-right">${p.unidad || ''}</td>
+        <td class="p-2 text-right">${Number(p.qty || 0).toFixed(2)}</td>
+        <td class="p-2 text-right">${qtyValued.toFixed(2)}</td>
+        <td class="p-2 text-right">${porValuar.toFixed(2)}</td>
+      `;
+
+      tr.addEventListener('click', () => {
+        const radio = tr.querySelector('input[name="partida-select"]');
+        if (radio) radio.checked = true;
+        partidaTableBody.querySelectorAll('tr').forEach((r) => r.classList.remove('bg-surface-container-high'));
+        tr.classList.add('bg-surface-container-high');
+        selectedPartidaId = p.id;
+        if (nextBtn) nextBtn.disabled = false;
+      });
+
+      partidaTableBody.appendChild(tr);
+    }
+  }
+
+  function openModal() {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    resetModalSteps();
+    renderList('');
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    selectedPartidaId = null;
+    resetModalSteps();
+  }
+
+  [dateInput, valuatorInput, stateSelect, descInput].forEach((el) => {
+    if (!el) return;
+    const eventName = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(eventName, validateFormFields);
+  });
+
+  openBtn?.addEventListener('click', openModal);
+  modalOverlayButtons.forEach((btn) => btn.addEventListener('click', closeModal));
+  partidaSearch?.addEventListener('input', (event) => renderList(event.target.value));
+
+  nextBtn?.addEventListener('click', () => {
+    if (!selectedPartidaId) return;
+    const partida = projectItems.find((p) => String(p.id) === String(selectedPartidaId));
+    if (!partida) return;
+
+    const qtyValued = Number(valuedQuantities[String(partida.id)] || 0);
+    const porValuar = Math.max(0, Number((partida.qty || 0) - qtyValued));
+
+    if (selectedNameEl) selectedNameEl.textContent = partida.nombre;
+    if (selectedUnitEl) selectedUnitEl.textContent = partida.unidad || '';
+    if (selectedQtyEl) selectedQtyEl.textContent = Number(partida.qty || 0).toFixed(2);
+    if (selectedQtyValuedEl) selectedQtyValuedEl.textContent = qtyValued.toFixed(2);
+    if (selectedPorValuarEl) selectedPorValuarEl.textContent = porValuar.toFixed(2);
+
+    document.getElementById('modal-step-1')?.classList.add('hidden');
+    document.getElementById('modal-step-2')?.classList.remove('hidden');
+    backBtn?.classList.remove('hidden');
+    if (finishBtn) {
+      finishBtn.classList.remove('hidden');
+      finishBtn.disabled = true;
+    }
+    nextBtn?.classList.add('hidden');
+
+    if (cantidadInput) {
+      cantidadInput.value = '';
+      cantidadInput.setAttribute('max', String(porValuar));
+      cantidadInput.focus();
+    }
+  });
+
+  backBtn?.addEventListener('click', () => {
+    document.getElementById('modal-step-1')?.classList.remove('hidden');
+    document.getElementById('modal-step-2')?.classList.add('hidden');
+    backBtn?.classList.add('hidden');
+    if (finishBtn) {
+      finishBtn.classList.add('hidden');
+      finishBtn.disabled = true;
+    }
+    if (nextBtn) {
+      nextBtn.classList.remove('hidden');
+      nextBtn.disabled = false;
+    }
+  });
+
+  cantidadInput?.addEventListener('input', (event) => {
+    const value = Number(event.target.value || 0);
+    const partida = projectItems.find((p) => String(p.id) === String(selectedPartidaId));
+    const qtyValued = Number(valuedQuantities[String(selectedPartidaId)] || 0);
+    const porValuar = partida ? Math.max(0, Number((partida.qty || 0) - qtyValued)) : 0;
+
+    const valid = value > 0 && value <= porValuar;
+    cantidadError?.classList.toggle('hidden', valid);
+    if (finishBtn) finishBtn.disabled = !valid;
+  });
+
+  finishBtn?.addEventListener('click', () => {
+    const value = Number(cantidadInput?.value || 0);
+    if (!selectedPartidaId || value <= 0) return;
+
+    const partida = projectItems.find((p) => String(p.id) === String(selectedPartidaId));
+    if (!partida) return;
+
+    const unitCost = Number(partida.unit_cost || 0);
+    appendMainRow(partida, value, unitCost);
+    closeModal();
+  });
+
+  saveBtn?.addEventListener('click', async () => {
+    setError('');
+    validateFormFields();
+
+    const project_id = Number(projectId || 0);
+    if (!project_id || !valuationId) {
+      setError('No se pudo determinar el proyecto o la valuación.');
+      return;
+    }
+
+    const mainTbody = document.querySelector('table.min-w-200 tbody');
+    const rows = mainTbody ? Array.from(mainTbody.querySelectorAll('tr[data-project-item-id]')) : [];
+    if (!rows.length) {
+      setError('Agrega al menos una partida antes de guardar la valuación.');
+      return;
+    }
+
+    const date = String(dateInput?.value || '').trim();
+    const valuator = String(valuatorInput?.value || '').trim();
+    const status = String(stateSelect?.value || '').trim().toLowerCase();
+    const notes = String(descInput?.value || '').trim();
+    if (!date || !valuator || !status || !notes) {
+      setError('Completa los campos requeridos.');
+      return;
+    }
+
+    const items = rows.map((tr) => {
+      return {
+        project_item_id: Number(tr.getAttribute('data-project-item-id') || 0),
+        qty: Number(tr.getAttribute('data-added-qty') || 0),
+        unit_cost: Number(tr.getAttribute('data-unit-cost') || 0)
+      };
+    }).filter((it) => it.project_item_id > 0 && it.qty > 0);
+
+    const totalCell = document.querySelector('table.min-w-200 tfoot td:last-child');
+    const totalAmount = totalCell ? parseCurrencyTextToNumber(totalCell.textContent) : 0;
+
+    const payload = {
+      project_id,
+      date,
+      status,
+      currency: 'USD',
+      amount: totalAmount,
+      notes,
+      valuator,
+      items
+    };
+
+    const oldLabel = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'No se pudo guardar la valuación');
+      }
+      window.location.href = `/projects/${project_id}/valuations`;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo guardar la valuación');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = oldLabel;
+      updateSaveButton();
+    }
+  });
+
+  async function init() {
+    try {
+      setError('');
+      await loadProjectName();
+      await loadProjectItems();
+      await loadExistingValuation();
+      validateFormFields();
+      updateSaveButton();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo cargar el editor de valuación');
+      console.error(error);
+    }
+  }
+
+  init();
+</script>

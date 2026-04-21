@@ -1,0 +1,753 @@
+---
+import MainLayout from '../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const projectId = (Astro.params as Record<string, string> | undefined)?.id ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer">← Volver al proyecto</a>
+
+    <section class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold text-on-surface">Proyecto #{projectId}</h1>
+        <h2 class="mt-1 text-lg font-semibold text-on-surface">Gastos</h2>
+        <p class="text-sm text-on-surface-variant">Registro de gastos, comprobantes y asignaciones a partidas y categorías.</p>
+        <p id="expenses-lock-message" class="hidden mt-2 text-sm text-on-surface-variant"></p>
+      </div>
+
+      <button id="toggle-expense-form" type="button" class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-on-primary shadow-sm transition hover:brightness-95 cursor-pointer">
+        <span class="material-symbols-outlined text-base">add</span>
+        Nuevo gasto
+      </button>
+    </section>
+
+    <section class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <article class="rounded-xl border border-outline-variant/10 bg-linear-to-br from-error-container to-on-error-container p-4 text-on-error shadow-sm transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-white/90">Monto total</div>
+            <div id="kpi-expenses-amount" class="mt-2 text-2xl font-extrabold">$ 0.00</div>
+          </div>
+          <span class="material-symbols-outlined text-white">receipt_long</span>
+        </div>
+        <div class="mt-3 inline-flex rounded-full bg-white/20 px-2 py-0.5 text-xs text-white">Suma de gastos del proyecto</div>
+      </article>
+
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 shadow-sm transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Comprobantes</div>
+            <div id="kpi-expenses-count" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+          </div>
+          <span class="material-symbols-outlined text-primary">inventory_2</span>
+        </div>
+        <div class="mt-3 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Registros creados</div>
+      </article>
+
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 shadow-sm transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Pendientes</div>
+            <div id="kpi-expenses-pending" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+          </div>
+          <span class="material-symbols-outlined text-amber-600">pending_actions</span>
+        </div>
+        <div class="mt-3 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">Borrador o revisión</div>
+      </article>
+    </section>
+
+    <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4 shadow-[0_8px_24px_rgba(13,28,47,0.04)]">
+      <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 class="text-lg font-semibold text-on-surface">Listado de gastos</h3>
+          <p class="text-sm text-on-surface-variant">Consulta y administra los gastos ya registrados.</p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <input id="expenses-search" type="search" placeholder="Buscar gasto, proveedor o referencia" class="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint sm:w-80" />
+          <select id="expenses-status-filter" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint">
+            <option value="all">Todos los estados</option>
+            <option value="draft">Draft</option>
+            <option value="review">Review</option>
+            <option value="approved">Approved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="expenses-root" class="overflow-x-auto">
+        <div class="text-on-surface-variant">Cargando gastos...</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="expense-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <button id="expense-modal-backdrop" type="button" data-close-expense-modal class="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-200 ease-out" aria-label="Cerrar modal"></button>
+    <section id="expense-modal-panel" class="relative z-10 w-full max-w-5xl rounded-2xl border border-outline-variant/20 bg-surface shadow-xl transform-gpu opacity-0 translate-y-4 scale-95 transition-all duration-200 ease-out will-change-transform will-change-opacity">
+      <div class="flex items-start justify-between gap-4 border-b border-outline-variant/15 px-5 py-4">
+        <div>
+          <h3 id="expense-form-title" class="text-lg font-semibold text-on-surface">Nuevo gasto</h3>
+          <p class="text-sm text-on-surface-variant">Completa la información del comprobante y su asignación.</p>
+        </div>
+        <button type="button" data-close-expense-modal class="inline-flex items-center justify-center rounded-md p-1 text-on-surface-variant transition hover:bg-surface-container-high cursor-pointer" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form id="expense-form" class="max-h-[78vh] overflow-y-auto p-5 space-y-5">
+        <input id="expense-id" type="hidden" />
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Fecha</span>
+            <input id="expense-date" type="date" required class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Monto</span>
+            <input id="expense-amount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Moneda</span>
+            <input id="expense-currency" type="text" value="USD" maxlength="10" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Descripción</span>
+            <input id="expense-description" type="text" required placeholder="Ej. Compra de concreto" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Proveedor</span>
+            <input id="expense-vendor" type="text" placeholder="Proveedor o contratista" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Referencia</span>
+            <input id="expense-reference" type="text" placeholder="Factura, folio o ticket" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Partida</span>
+            <select id="expense-project-item" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint">
+              <option value="">Sin asignar</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Categoría</span>
+            <select id="expense-category" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint">
+              <option value="">Sin asignar</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="block">
+          <span class="text-xs text-on-surface-variant">Notas</span>
+          <textarea id="expense-notes" rows="3" placeholder="Observaciones internas del gasto" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint"></textarea>
+        </label>
+
+        <div id="expense-form-error" class="hidden rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error"></div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button id="expense-form-reset" type="button" class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Limpiar</button>
+          <button id="cancel-expense-edit" type="button" class="hidden rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar edición</button>
+          <button id="expense-submit" type="submit" class="rounded-lg bg-primary px-4 py-2 text-on-primary shadow-sm transition hover:brightness-95 cursor-pointer">Guardar gasto</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="expense-delete-modal" class="fixed inset-0 z-60 hidden items-center justify-center px-4">
+    <button id="expense-delete-modal-backdrop" type="button" data-close-delete-modal class="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-200 ease-out" aria-label="Cerrar confirmación"></button>
+    <section id="expense-delete-modal-panel" class="relative z-10 w-full max-w-md rounded-2xl border border-outline-variant/20 bg-surface shadow-xl transform-gpu opacity-0 translate-y-4 scale-95 transition-all duration-200 ease-out will-change-transform will-change-opacity">
+      <div class="border-b border-outline-variant/15 px-5 py-4">
+        <h3 class="text-lg font-semibold text-on-surface">Confirmar eliminación</h3>
+        <p class="mt-1 text-sm text-on-surface-variant">Esta acción elimina el gasto de forma permanente.</p>
+      </div>
+
+      <div class="space-y-3 px-5 py-4">
+        <div class="rounded-xl border border-error/20 bg-error/10 px-3 py-3 text-sm text-on-surface">
+          <p class="font-medium text-error">¿Deseas eliminar este gasto?</p>
+          <p id="delete-expense-summary" class="mt-1 text-on-surface-variant"></p>
+        </div>
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-outline-variant/15 px-5 py-4 sm:flex-row sm:justify-end">
+        <button id="cancel-expense-delete" type="button" data-close-delete-modal class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar</button>
+        <button id="confirm-expense-delete" type="button" class="inline-flex items-center justify-center gap-2 rounded-lg bg-error px-4 py-2 text-on-error shadow-sm transition hover:brightness-95 cursor-pointer">
+          <span class="material-symbols-outlined text-base">delete</span>
+          Eliminar gasto
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    const pageRoot = document.getElementById('project-name');
+    const projectId = pageRoot ? pageRoot.dataset.projectId : null;
+    const _meta = document.querySelector('meta[name="api-base"]');
+    const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+    const apiBase = _apiBase.replace(/\/$/, '');
+    const expensesRoot = document.getElementById('expenses-root');
+    const expenseModal = document.getElementById('expense-modal');
+    const expenseModalBackdrop = document.getElementById('expense-modal-backdrop');
+    const expenseModalPanel = document.getElementById('expense-modal-panel');
+    const deleteModal = document.getElementById('expense-delete-modal');
+    const deleteModalBackdrop = document.getElementById('expense-delete-modal-backdrop');
+    const deleteModalPanel = document.getElementById('expense-delete-modal-panel');
+    const deleteSummaryEl = document.getElementById('delete-expense-summary');
+    const confirmDeleteBtn = document.getElementById('confirm-expense-delete');
+    const form = document.getElementById('expense-form');
+    const formTitle = document.getElementById('expense-form-title');
+    const formError = document.getElementById('expense-form-error');
+    const toggleFormBtn = document.getElementById('toggle-expense-form');
+    const cancelEditBtn = document.getElementById('cancel-expense-edit');
+    const lockMessageEl = document.getElementById('expenses-lock-message');
+    const itemSelect = document.getElementById('expense-project-item');
+    const categorySelect = document.getElementById('expense-category');
+    const searchInput = document.getElementById('expenses-search');
+    const statusFilter = document.getElementById('expenses-status-filter');
+    const kpiAmountEl = document.getElementById('kpi-expenses-amount');
+    const kpiCountEl = document.getElementById('kpi-expenses-count');
+    const kpiPendingEl = document.getElementById('kpi-expenses-pending');
+
+    const fields = {
+      id: document.getElementById('expense-id'),
+      date: document.getElementById('expense-date'),
+      amount: document.getElementById('expense-amount'),
+      currency: document.getElementById('expense-currency'),
+      description: document.getElementById('expense-description'),
+      vendor: document.getElementById('expense-vendor'),
+      reference: document.getElementById('expense-reference'),
+      projectItemId: document.getElementById('expense-project-item'),
+      categoryId: document.getElementById('expense-category'),
+      notes: document.getElementById('expense-notes')
+    };
+
+    let projectStatus = 'draft';
+    let projectCurrency = 'USD';
+    let projectItems = [];
+    let categories = [];
+    let expenses = [];
+    let pendingDeleteId = null;
+    let pendingDeleteResolve = null;
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatCurrency(amount, currency = projectCurrency || 'USD') {
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(Number(amount || 0));
+      } catch (error) {
+        return `${Number(amount || 0).toFixed(2)} ${currency || ''}`;
+      }
+    }
+
+    function showToast(message, type = 'info', timeout = 3200) {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-6 right-6 z-50 flex flex-col gap-2';
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      const tone = type === 'error' ? 'bg-rose-600 text-white' : type === 'success' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white';
+      toast.className = `${tone} max-w-sm rounded-lg px-4 py-3 text-sm shadow-lg`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, timeout);
+    }
+
+    function setFormVisibility(visible) {
+      if (!expenseModal) return;
+
+      if (visible) {
+        expenseModal.classList.remove('hidden');
+        expenseModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(() => {
+          expenseModalBackdrop?.classList.remove('opacity-0');
+          expenseModalBackdrop?.classList.add('opacity-100');
+          expenseModalPanel?.classList.remove('opacity-0', 'translate-y-4', 'scale-95');
+          expenseModalPanel?.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+        });
+
+        setTimeout(() => fields.date?.focus(), 170);
+        return;
+      }
+
+      expenseModalBackdrop?.classList.remove('opacity-100');
+      expenseModalBackdrop?.classList.add('opacity-0');
+      expenseModalPanel?.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+      expenseModalPanel?.classList.add('opacity-0', 'translate-y-4', 'scale-95');
+
+      let closed = false;
+      const finishClose = () => {
+        if (closed) return;
+        closed = true;
+        expenseModal.classList.add('hidden');
+        expenseModal.classList.remove('flex');
+        document.body.style.overflow = '';
+      };
+
+      expenseModalPanel?.addEventListener('transitionend', finishClose, { once: true });
+      setTimeout(finishClose, 230);
+    }
+
+    function setDeleteModalVisibility(visible) {
+      if (!deleteModal) return;
+
+      if (visible) {
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(() => {
+          deleteModalBackdrop?.classList.remove('opacity-0');
+          deleteModalBackdrop?.classList.add('opacity-100');
+          deleteModalPanel?.classList.remove('opacity-0', 'translate-y-4', 'scale-95');
+          deleteModalPanel?.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+        });
+
+        setTimeout(() => confirmDeleteBtn?.focus(), 170);
+        return;
+      }
+
+      deleteModalBackdrop?.classList.remove('opacity-100');
+      deleteModalBackdrop?.classList.add('opacity-0');
+      deleteModalPanel?.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+      deleteModalPanel?.classList.add('opacity-0', 'translate-y-4', 'scale-95');
+
+      let closed = false;
+      const finishClose = () => {
+        if (closed) return;
+        closed = true;
+        deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
+
+        if (expenseModal?.classList.contains('hidden')) {
+          document.body.style.overflow = '';
+        }
+      };
+
+      deleteModalPanel?.addEventListener('transitionend', finishClose, { once: true });
+      setTimeout(finishClose, 230);
+    }
+
+    function closeDeleteModal(confirmed) {
+      setDeleteModalVisibility(false);
+      if (pendingDeleteResolve) {
+        pendingDeleteResolve(Boolean(confirmed));
+      }
+      pendingDeleteResolve = null;
+      pendingDeleteId = null;
+    }
+
+    function askDeleteConfirmation(expense) {
+      if (!deleteModal || !deleteSummaryEl) {
+        return Promise.resolve(window.confirm('¿Eliminar este gasto?'));
+      }
+
+      const safeExpense = expense || {};
+      const description = safeExpense.description || `Gasto #${safeExpense.id || ''}`;
+      const amount = formatCurrency(safeExpense.amount, safeExpense.currency || projectCurrency);
+      const date = safeExpense.expense_date || 'Sin fecha';
+      deleteSummaryEl.textContent = `${description} · ${amount} · ${date}`;
+      pendingDeleteId = String(safeExpense.id || '');
+
+      return new Promise((resolve) => {
+        pendingDeleteResolve = resolve;
+        setDeleteModalVisibility(true);
+      });
+    }
+
+    function clearFormError() {
+      if (!formError) return;
+      formError.textContent = '';
+      formError.classList.add('hidden');
+    }
+
+    function setFormError(message) {
+      if (!formError) return;
+      formError.textContent = message;
+      formError.classList.remove('hidden');
+    }
+
+    function resetForm() {
+      if (!form) return;
+      form.reset();
+      fields.id.value = '';
+      fields.currency.value = projectCurrency || 'USD';
+      fields.date.value = new Date().toISOString().slice(0, 10);
+      formTitle.textContent = 'Nuevo gasto';
+      cancelEditBtn.classList.add('hidden');
+      clearFormError();
+    }
+
+    function populateSelect(select, options, placeholder) {
+      if (!select) return;
+      const currentValue = select.value;
+      select.innerHTML = `<option value="">${placeholder}</option>` + options.map((option) => (
+        `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`
+      )).join('');
+      if (options.some((option) => String(option.value) === String(currentValue))) {
+        select.value = currentValue;
+      }
+    }
+
+    async function loadProject() {
+      if (!projectId || !pageRoot) return;
+      try {
+        const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('No se pudo cargar el proyecto');
+        const payload = await res.json();
+        const project = Array.isArray(payload) ? payload[0] : (payload.data || payload.project || payload);
+        pageRoot.textContent = project?.name || `Proyecto #${projectId}`;
+        projectStatus = String(project?.status || 'draft');
+        projectCurrency = String(project?.currency || 'USD');
+      } catch (error) {
+        pageRoot.textContent = `Proyecto #${projectId}`;
+      }
+      if (lockMessageEl) {
+        lockMessageEl.textContent = '';
+        lockMessageEl.classList.add('hidden');
+      }
+      resetForm();
+    }
+
+    async function loadFormDependencies() {
+      if (!projectId) return;
+      const itemsRes = await fetch(`${apiBase}/project_items.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+      const itemsPayload = itemsRes.ok ? await itemsRes.json() : { data: [] };
+      projectItems = Array.isArray(itemsPayload?.data) ? itemsPayload.data : [];
+      populateSelect(itemSelect, projectItems.map((item) => ({
+        value: item.id,
+        label: `${item.item_name || 'Partida'} · ${Number(item.qty || 0).toFixed(2)} ${item.unit || ''}`
+      })), 'Sin asignar');
+
+      await loadExpenseCategories();
+    }
+
+    async function loadExpenseCategories() {
+      const previousValue = fields.categoryId?.value || '';
+      populateSelect(categorySelect, [], 'Cargando categorías...');
+
+      try {
+        const categoriesRes = await fetch(`${apiBase}/expense_categories.php`, { cache: 'no-store' });
+        if (!categoriesRes.ok) throw new Error('No se pudieron cargar las categorías');
+        const categoriesPayload = await categoriesRes.json();
+        categories = Array.isArray(categoriesPayload?.data) ? categoriesPayload.data : [];
+
+      populateSelect(categorySelect, categories.map((category) => ({
+        value: category.id,
+        label: category.name || category.code || 'Categoría'
+      })), 'Sin asignar');
+
+        if (previousValue) {
+          fields.categoryId.value = previousValue;
+        }
+      } catch (error) {
+        categories = [];
+        populateSelect(categorySelect, [], 'No hay categorías disponibles');
+        showToast('No se pudieron cargar las categorías de gasto', 'error');
+      }
+    }
+
+    async function loadExpenses() {
+      if (!projectId || !expensesRoot) return;
+      expensesRoot.innerHTML = '<div class="text-on-surface-variant">Cargando gastos...</div>';
+      try {
+        const res = await fetch(`${apiBase}/expenses.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('No se pudieron cargar los gastos');
+        const payload = await res.json();
+        expenses = Array.isArray(payload?.data) ? payload.data : [];
+        updateKpis(expenses);
+        renderExpenses();
+      } catch (error) {
+        console.error(error);
+        expenses = [];
+        updateKpis([]);
+        expensesRoot.innerHTML = '<div class="text-error">No se pudieron cargar los gastos.</div>';
+      }
+    }
+
+    function updateKpis(list) {
+      const totalAmount = list.reduce((acc, expense) => acc + Number(expense.amount || 0), 0);
+      const pendingCount = list.filter((expense) => {
+        const normalized = String(expense.status || '').toLowerCase();
+        return normalized === 'draft' || normalized === 'review' || normalized.includes('draft') || normalized.includes('review');
+      }).length;
+
+      kpiAmountEl.textContent = formatCurrency(totalAmount, list[0]?.currency || projectCurrency);
+      kpiCountEl.textContent = String(list.length);
+      kpiPendingEl.textContent = String(pendingCount);
+    }
+
+    function getFilteredExpenses() {
+      const term = String(searchInput?.value || '').trim().toLowerCase();
+      const status = String(statusFilter?.value || 'all').toLowerCase();
+      return expenses.filter((expense) => {
+        const haystack = [expense.description, expense.vendor, expense.reference, expense.project_item_name, expense.notes]
+          .join(' ')
+          .toLowerCase();
+        const matchesTerm = term === '' || haystack.includes(term);
+        const matchesStatus = status === 'all' || String(expense.status || '').toLowerCase() === status;
+        return matchesTerm && matchesStatus;
+      });
+    }
+
+    function getStatusBadge(status) {
+      const normalized = String(status || 'draft').toLowerCase();
+      if (normalized === 'closed') return 'bg-emerald-100 text-emerald-800';
+      if (normalized === 'approved') return 'bg-sky-100 text-sky-800';
+      if (normalized === 'review') return 'bg-amber-100 text-amber-800';
+      return 'bg-surface-dim text-on-surface';
+    }
+
+    function renderExpenses() {
+      if (!expensesRoot) return;
+      const filtered = getFilteredExpenses();
+      if (filtered.length === 0) {
+        expensesRoot.innerHTML = '<div class="rounded-xl border border-dashed border-outline-variant px-4 py-10 text-center text-on-surface-variant">No hay gastos que coincidan con el filtro actual.</div>';
+        return;
+      }
+
+      const rows = filtered.map((expense) => {
+        const itemLabel = expense.project_item_name || 'Sin partida';
+        const categoryLabel = expense.category_name || 'Sin categoría';
+        return `
+          <tr class="border-b border-outline-variant/10 bg-surface-container-low hover:bg-surface-dim/80">
+            <td class="px-3 py-3 text-sm font-medium text-on-surface">${escapeHtml(expense.description)}</td>
+            <td class="px-3 py-3 text-sm text-on-surface-variant">${escapeHtml(expense.expense_date || '')}</td>
+            <td class="px-3 py-3 text-sm text-on-surface-variant">${escapeHtml(itemLabel)}</td>
+            <td class="px-3 py-3 text-sm text-on-surface-variant">${escapeHtml(categoryLabel)}</td>
+            <td class="px-3 py-3 text-sm text-on-surface-variant">${escapeHtml(expense.vendor || '—')}</td>
+            <td class="px-3 py-3 text-sm text-on-surface-variant">${escapeHtml(expense.reference || '—')}</td>
+            <td class="px-3 py-3 text-sm"><span class="inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusBadge(expense.status)}">${escapeHtml(expense.status || 'draft')}</span></td>
+            <td class="px-3 py-3 text-right text-sm font-semibold text-on-surface">${escapeHtml(formatCurrency(expense.amount, expense.currency || projectCurrency))}</td>
+            <td class="px-3 py-3 text-right text-sm">
+              <button type="button" data-action="edit" data-id="${expense.id}" class="rounded p-1 text-primary transition hover:bg-button-hover cursor-pointer" title="Editar">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button type="button" data-action="delete" data-id="${expense.id}" class="ml-2 rounded p-1 text-error transition hover:bg-button-hover cursor-pointer" title="Eliminar">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      expensesRoot.innerHTML = `
+        <table class="min-w-full table-auto text-left">
+          <thead>
+            <tr class="border border-outline-variant text-xs text-on-surface-variant">
+              <th class="px-3 py-2">Descripción</th>
+              <th class="px-3 py-2">Fecha</th>
+              <th class="px-3 py-2">Partida</th>
+              <th class="px-3 py-2">Categoría</th>
+              <th class="px-3 py-2">Proveedor</th>
+              <th class="px-3 py-2">Referencia</th>
+              <th class="px-3 py-2">Estado</th>
+              <th class="px-3 py-2 text-right">Monto</th>
+              <th class="px-3 py-2 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function fillForm(expense) {
+      fields.id.value = String(expense.id || '');
+      fields.date.value = expense.expense_date || '';
+      fields.amount.value = String(expense.amount || '');
+      fields.currency.value = expense.currency || projectCurrency || 'USD';
+      fields.description.value = expense.description || '';
+      fields.vendor.value = expense.vendor || '';
+      fields.reference.value = expense.reference || '';
+      fields.projectItemId.value = expense.project_item_id || '';
+      fields.categoryId.value = expense.category_id || '';
+      fields.notes.value = expense.notes || '';
+      formTitle.textContent = `Editar gasto #${expense.id}`;
+      cancelEditBtn.classList.remove('hidden');
+      clearFormError();
+      setFormVisibility(true);
+    }
+
+    async function handleDelete(id) {
+      if (confirmDeleteBtn) {
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      }
+
+      try {
+        const res = await fetch(`${apiBase}/expenses.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload.error || payload.message || 'No se pudo eliminar el gasto');
+        }
+        showToast('Gasto eliminado', 'success');
+        resetForm();
+        await loadExpenses();
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'No se pudo eliminar el gasto', 'error');
+      } finally {
+        if (confirmDeleteBtn) {
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+      }
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      clearFormError();
+
+      const payload = {
+        project_id: Number(projectId),
+        expense_date: fields.date.value,
+        amount: Number(fields.amount.value),
+        currency: fields.currency.value.trim() || projectCurrency || 'USD',
+        description: fields.description.value.trim(),
+        vendor: fields.vendor.value.trim(),
+        reference: fields.reference.value.trim(),
+        project_item_id: fields.projectItemId.value || null,
+        category_id: fields.categoryId.value || null,
+        notes: fields.notes.value.trim()
+      };
+
+      if (!payload.expense_date || !payload.description || !(payload.amount > 0)) {
+        setFormError('Fecha, descripción y monto son obligatorios.');
+        return;
+      }
+
+      const expenseId = fields.id.value.trim();
+      const method = expenseId ? 'PUT' : 'POST';
+      const url = expenseId ? `${apiBase}/expenses.php?id=${encodeURIComponent(expenseId)}` : `${apiBase}/expenses.php`;
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const responsePayload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(responsePayload.error || responsePayload.message || 'No se pudo guardar el gasto');
+        }
+
+        showToast(expenseId ? 'Gasto actualizado' : 'Gasto creado', 'success');
+        resetForm();
+        setFormVisibility(false);
+        await Promise.all([loadExpenses(), loadProject()]);
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : 'No se pudo guardar el gasto');
+      }
+    }
+
+    toggleFormBtn?.addEventListener('click', async () => {
+      resetForm();
+      await loadExpenseCategories();
+      setFormVisibility(true);
+    });
+
+    cancelEditBtn?.addEventListener('click', () => {
+      resetForm();
+      setFormVisibility(false);
+    });
+
+    document.getElementById('expense-form-reset')?.addEventListener('click', () => {
+      resetForm();
+    });
+
+    form?.addEventListener('submit', handleSubmit);
+    searchInput?.addEventListener('input', renderExpenses);
+    statusFilter?.addEventListener('change', renderExpenses);
+
+    document.querySelectorAll('[data-close-expense-modal]').forEach((element) => {
+      element.addEventListener('click', () => {
+        resetForm();
+        setFormVisibility(false);
+      });
+    });
+
+    document.querySelectorAll('[data-close-delete-modal]').forEach((element) => {
+      element.addEventListener('click', () => {
+        closeDeleteModal(false);
+      });
+    });
+
+    confirmDeleteBtn?.addEventListener('click', () => {
+      closeDeleteModal(true);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+
+      if (!deleteModal?.classList.contains('hidden')) {
+        closeDeleteModal(false);
+        return;
+      }
+
+      if (expenseModal?.classList.contains('hidden')) return;
+      resetForm();
+      setFormVisibility(false);
+    });
+
+    expensesRoot?.addEventListener('click', (event) => {
+      const target = event.target instanceof HTMLElement ? event.target.closest('button[data-action]') : null;
+      if (!target) return;
+      const action = target.getAttribute('data-action');
+      const id = target.getAttribute('data-id');
+      if (!id) return;
+      const expense = expenses.find((entry) => String(entry.id) === String(id));
+      if (!expense) return;
+
+      if (action === 'edit') {
+        fillForm(expense);
+        return;
+      }
+      if (action === 'delete') {
+        askDeleteConfirmation(expense).then((confirmed) => {
+          if (!confirmed) return;
+          handleDelete(id);
+        });
+      }
+    });
+
+    await loadProject();
+    await loadFormDependencies();
+    await loadExpenses();
+  </script>
+
+  <NavBarMobil />
+</MainLayout>
