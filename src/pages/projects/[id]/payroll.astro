@@ -1,0 +1,488 @@
+---
+import MainLayout from '../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const projectId = (Astro.params as Record<string, string> | undefined)?.id ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer">← Volver al proyecto</a>
+
+    <section class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold text-on-surface">Proyecto #{projectId}</h1>
+        <h2 class="mt-1 text-lg font-semibold text-on-surface">Nómina de cuadrillas</h2>
+        <p class="text-sm text-on-surface-variant">Marca asistencia diaria por empleado: Día, Noche o Redoble (ambos checks).</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="prev-month" type="button" class="rounded-lg border border-outline-variant px-3 py-2 text-on-surface cursor-pointer">◀</button>
+        <input id="month-picker" type="month" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+        <button id="next-month" type="button" class="rounded-lg border border-outline-variant px-3 py-2 text-on-surface cursor-pointer">▶</button>
+      </div>
+    </section>
+
+    <section class="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Empleados activos</div>
+        <div id="kpi-employees" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Turnos día</div>
+        <div id="kpi-day" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Turnos noche</div>
+        <div id="kpi-night" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-linear-to-br from-primary to-primary-container text-on-primary p-4">
+        <div class="text-[10px] uppercase tracking-wide opacity-90">Total período</div>
+        <div id="kpi-total" class="mt-2 text-2xl font-extrabold">$0.00</div>
+      </article>
+    </section>
+
+    <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4">
+      <h3 class="text-lg font-semibold text-on-surface">Alta de empleado</h3>
+      <form id="employee-form" class="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3">
+        <input id="employee-name" required placeholder="Nombre completo" class="md:col-span-2 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+        <select id="employee-crew" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface">
+          <option value="day">Cuadrilla día</option>
+          <option value="night">Cuadrilla noche</option>
+        </select>
+        <input id="employee-day-rate" type="number" min="0" step="0.01" required placeholder="Tarifa día" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+        <input id="employee-night-rate" type="number" min="0" step="0.01" required placeholder="Tarifa noche" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+        <button type="submit" class="md:col-span-5 justify-self-end rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">Agregar empleado</button>
+      </form>
+      <p id="employee-form-error" class="hidden mt-2 text-sm text-error"></p>
+    </section>
+
+    <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4">
+      <div class="overflow-x-auto">
+        <table class="min-w-275 w-full border-collapse" id="payroll-table">
+          <thead id="payroll-head"></thead>
+          <tbody id="payroll-body">
+            <tr><td class="py-6 text-on-surface-variant">Cargando nómina...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <NavBarMobil />
+</MainLayout>
+
+<script type="module">
+  const projectNameEl = document.getElementById('project-name');
+  const projectId = Number(projectNameEl?.dataset.projectId || 0);
+  const monthPicker = document.getElementById('month-picker');
+  const prevMonthBtn = document.getElementById('prev-month');
+  const nextMonthBtn = document.getElementById('next-month');
+
+  const employeeForm = document.getElementById('employee-form');
+  const employeeNameInput = document.getElementById('employee-name');
+  const employeeCrewInput = document.getElementById('employee-crew');
+  const employeeDayRateInput = document.getElementById('employee-day-rate');
+  const employeeNightRateInput = document.getElementById('employee-night-rate');
+  const employeeFormError = document.getElementById('employee-form-error');
+
+  const payrollHead = document.getElementById('payroll-head');
+  const payrollBody = document.getElementById('payroll-body');
+
+  const kpiEmployees = document.getElementById('kpi-employees');
+  const kpiDay = document.getElementById('kpi-day');
+  const kpiNight = document.getElementById('kpi-night');
+  const kpiTotal = document.getElementById('kpi-total');
+
+  const _meta = document.querySelector('meta[name="api-base"]');
+  const apiBase = (_meta ? _meta.content : 'http://localhost/Budget/api').replace(/\/$/, '');
+
+  let currentMonthDate = new Date();
+  let employees = [];
+  let attendanceMap = new Map();
+
+  function monthValue(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+  function rangeFromMonth(value) {
+    const [y, m] = String(value).split('-').map(Number);
+    const first = new Date(y, (m || 1) - 1, 1);
+    const last = new Date(y, (m || 1), 0);
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { start: fmt(first), end: fmt(last), year: y, monthIndex: first.getMonth(), days: last.getDate() };
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function money(value) {
+    const n = Number(value || 0);
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
+  }
+
+  function keyFor(employeeId, workDate) {
+    return `${employeeId}|${workDate}`;
+  }
+
+  function showFormError(message = '') {
+    if (!employeeFormError) return;
+    employeeFormError.textContent = message;
+    employeeFormError.classList.toggle('hidden', message === '');
+  }
+
+  async function loadProjectName() {
+    if (!projectId || !projectNameEl) return;
+    try {
+      const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const project = Array.isArray(data) ? data[0] : (data.data || data.project || data);
+      if (project?.name) {
+        projectNameEl.textContent = project.name;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function loadEmployees() {
+    const res = await fetch(`${apiBase}/payroll_employees.php?project_id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('No se pudieron cargar empleados');
+    const data = await res.json();
+    employees = Array.isArray(data?.data) ? data.data : [];
+  }
+
+  async function loadAttendance() {
+    const range = rangeFromMonth(monthPicker.value || monthValue(currentMonthDate));
+    const url = `${apiBase}/payroll_attendance.php?project_id=${encodeURIComponent(String(projectId))}&start_date=${encodeURIComponent(range.start)}&end_date=${encodeURIComponent(range.end)}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('No se pudo cargar asistencia');
+    const data = await res.json();
+
+    attendanceMap = new Map();
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    rows.forEach((row) => {
+      attendanceMap.set(keyFor(row.employee_id, row.work_date), {
+        worked_day: Number(row.worked_day || 0),
+        worked_night: Number(row.worked_night || 0),
+      });
+    });
+  }
+
+  function getDateLabel(year, monthIndex, day) {
+    const d = new Date(year, monthIndex, day);
+    return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric' }).format(d);
+  }
+
+  function rowStats(employee, dates) {
+    let dayCount = 0;
+    let nightCount = 0;
+    let redouble = 0;
+    let total = 0;
+
+    dates.forEach((date) => {
+      const item = attendanceMap.get(keyFor(employee.id, date));
+      const workedDay = Number(item?.worked_day || 0) === 1;
+      const workedNight = Number(item?.worked_night || 0) === 1;
+
+      if (workedDay) dayCount += 1;
+      if (workedNight) nightCount += 1;
+      if (workedDay && workedNight) redouble += 1;
+      total += (workedDay ? Number(employee.day_rate || 0) : 0) + (workedNight ? Number(employee.night_rate || 0) : 0);
+    });
+
+    return { dayCount, nightCount, redouble, total };
+  }
+
+  function renderTable() {
+    const range = rangeFromMonth(monthPicker.value || monthValue(currentMonthDate));
+    const dates = Array.from({ length: range.days }, (_, i) => `${range.start.slice(0, 8)}${String(i + 1).padStart(2, '0')}`);
+
+    const dayHeaders = dates.map((_, idx) => `<th class="border border-outline-variant/20 px-2 py-2 text-[11px] text-on-surface-variant">${escapeHtml(getDateLabel(range.year, range.monthIndex, idx + 1))}</th>`).join('');
+    payrollHead.innerHTML = `
+      <tr>
+        <th class="border border-outline-variant/20 px-3 py-2 text-left text-xs text-on-surface-variant">Empleado</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-left text-xs text-on-surface-variant">Cuadrilla</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-right text-xs text-on-surface-variant">Tarifa día</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-right text-xs text-on-surface-variant">Tarifa noche</th>
+        ${dayHeaders}
+        <th class="border border-outline-variant/20 px-3 py-2 text-right text-xs text-on-surface-variant">Días</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-right text-xs text-on-surface-variant">Noches</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-right text-xs text-on-surface-variant">Redobles</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-right text-xs text-on-surface-variant">Total</th>
+        <th class="border border-outline-variant/20 px-3 py-2 text-center text-xs text-on-surface-variant">Acción</th>
+      </tr>
+    `;
+
+    if (!employees.length) {
+      payrollBody.innerHTML = '<tr><td colspan="10" class="py-6 text-on-surface-variant">No hay empleados en este proyecto.</td></tr>';
+      kpiEmployees.textContent = '0';
+      kpiDay.textContent = '0';
+      kpiNight.textContent = '0';
+      kpiTotal.textContent = money(0);
+      return;
+    }
+
+    let globalDay = 0;
+    let globalNight = 0;
+    let globalTotal = 0;
+
+    const rows = employees.map((employee) => {
+      const dayCells = dates.map((workDate) => {
+        const item = attendanceMap.get(keyFor(employee.id, workDate));
+        const workedDay = Number(item?.worked_day || 0) === 1;
+        const workedNight = Number(item?.worked_night || 0) === 1;
+
+        return `
+          <td class="border border-outline-variant/20 px-1 py-1">
+            <div class="flex items-center justify-center gap-1" data-cell="1" data-employee-id="${employee.id}" data-work-date="${workDate}">
+              <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
+                D
+                <input type="checkbox" data-shift="day" ${workedDay ? 'checked' : ''} />
+              </label>
+              <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
+                N
+                <input type="checkbox" data-shift="night" ${workedNight ? 'checked' : ''} />
+              </label>
+            </div>
+          </td>
+        `;
+      }).join('');
+
+      const stats = rowStats(employee, dates);
+      globalDay += stats.dayCount;
+      globalNight += stats.nightCount;
+      globalTotal += stats.total;
+
+      const crewLabel = employee.crew === 'night' ? 'Noche' : 'Día';
+
+      return `
+        <tr>
+          <td class="border border-outline-variant/20 px-3 py-2 text-sm font-medium">${escapeHtml(employee.full_name)}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-sm">${crewLabel}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right">
+            <input type="number" step="0.01" min="0" data-rate="day" data-employee-id="${employee.id}" value="${Number(employee.day_rate || 0).toFixed(2)}" class="w-24 rounded border border-outline-variant bg-surface px-2 py-1 text-right text-sm" />
+          </td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right">
+            <input type="number" step="0.01" min="0" data-rate="night" data-employee-id="${employee.id}" value="${Number(employee.night_rate || 0).toFixed(2)}" class="w-24 rounded border border-outline-variant bg-surface px-2 py-1 text-right text-sm" />
+          </td>
+          ${dayCells}
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.dayCount}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.nightCount}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.redouble}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm font-semibold">${money(stats.total)}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-center">
+            <button type="button" data-action="save-rates" data-employee-id="${employee.id}" class="rounded bg-primary px-2 py-1 text-xs text-on-primary cursor-pointer">Guardar</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    payrollBody.innerHTML = rows;
+
+    kpiEmployees.textContent = String(employees.length);
+    kpiDay.textContent = String(globalDay);
+    kpiNight.textContent = String(globalNight);
+    kpiTotal.textContent = money(globalTotal);
+  }
+
+  async function saveAttendance(employeeId, workDate, workedDay, workedNight) {
+    const payload = {
+      project_id: projectId,
+      employee_id: employeeId,
+      work_date: workDate,
+      worked_day: workedDay,
+      worked_night: workedNight,
+    };
+
+    const res = await fetch(`${apiBase}/payroll_attendance.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || data.message || 'No se pudo guardar la asistencia');
+    }
+
+    if (data?.data?.deleted) {
+      attendanceMap.delete(keyFor(employeeId, workDate));
+    } else {
+      attendanceMap.set(keyFor(employeeId, workDate), {
+        worked_day: Number(data?.data?.worked_day || 0),
+        worked_night: Number(data?.data?.worked_night || 0),
+      });
+    }
+  }
+
+  async function saveEmployeeRates(employeeId) {
+    const dayInput = payrollBody.querySelector(`input[data-rate="day"][data-employee-id="${employeeId}"]`);
+    const nightInput = payrollBody.querySelector(`input[data-rate="night"][data-employee-id="${employeeId}"]`);
+    if (!(dayInput instanceof HTMLInputElement) || !(nightInput instanceof HTMLInputElement)) return;
+
+    const body = {
+      id: Number(employeeId),
+      day_rate: Number(dayInput.value || 0),
+      night_rate: Number(nightInput.value || 0),
+    };
+
+    const res = await fetch(`${apiBase}/payroll_employees.php?id=${encodeURIComponent(String(employeeId))}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || data.message || 'No se pudieron actualizar tarifas');
+    }
+
+    employees = employees.map((employee) => {
+      if (String(employee.id) !== String(employeeId)) return employee;
+      return {
+        ...employee,
+        day_rate: body.day_rate,
+        night_rate: body.night_rate,
+      };
+    });
+  }
+
+  payrollBody.addEventListener('change', async (event) => {
+    const input = event.target instanceof HTMLInputElement ? event.target : null;
+    if (!input || !input.matches('input[type="checkbox"][data-shift]')) return;
+
+    const cell = input.closest('[data-cell="1"]');
+    if (!(cell instanceof HTMLElement)) return;
+
+    const employeeId = Number(cell.dataset.employeeId || 0);
+    const workDate = String(cell.dataset.workDate || '');
+    const dayCheckbox = cell.querySelector('input[data-shift="day"]');
+    const nightCheckbox = cell.querySelector('input[data-shift="night"]');
+
+    if (!(dayCheckbox instanceof HTMLInputElement) || !(nightCheckbox instanceof HTMLInputElement)) return;
+
+    try {
+      await saveAttendance(employeeId, workDate, dayCheckbox.checked ? 1 : 0, nightCheckbox.checked ? 1 : 0);
+      renderTable();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'No se pudo guardar la asistencia');
+      const current = attendanceMap.get(keyFor(employeeId, workDate));
+      dayCheckbox.checked = Number(current?.worked_day || 0) === 1;
+      nightCheckbox.checked = Number(current?.worked_night || 0) === 1;
+    }
+  });
+
+  payrollBody.addEventListener('click', async (event) => {
+    const btn = event.target instanceof HTMLElement ? event.target.closest('button[data-action="save-rates"]') : null;
+    if (!(btn instanceof HTMLButtonElement)) return;
+
+    const employeeId = Number(btn.dataset.employeeId || 0);
+    if (!employeeId) return;
+
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      await saveEmployeeRates(employeeId);
+      renderTable();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'No se pudieron guardar tarifas');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
+
+  employeeForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    showFormError('');
+
+    const payload = {
+      project_id: projectId,
+      full_name: String(employeeNameInput?.value || '').trim(),
+      crew: String(employeeCrewInput?.value || 'day').trim(),
+      day_rate: Number(employeeDayRateInput?.value || 0),
+      night_rate: Number(employeeNightRateInput?.value || 0),
+    };
+
+    if (!payload.full_name) {
+      showFormError('Ingresa el nombre del empleado');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${apiBase}/payroll_employees.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'No se pudo crear empleado');
+      }
+
+      if (employeeForm instanceof HTMLFormElement) {
+        employeeForm.reset();
+      }
+      await loadEmployees();
+      renderTable();
+    } catch (error) {
+      showFormError(error instanceof Error ? error.message : 'No se pudo crear empleado');
+    }
+  });
+
+  function moveMonth(offset) {
+    const current = rangeFromMonth(monthPicker.value || monthValue(new Date()));
+    const date = new Date(current.year, current.monthIndex + offset, 1);
+    monthPicker.value = monthValue(date);
+  }
+
+  prevMonthBtn?.addEventListener('click', async () => {
+    moveMonth(-1);
+    await reloadAll();
+  });
+
+  nextMonthBtn?.addEventListener('click', async () => {
+    moveMonth(1);
+    await reloadAll();
+  });
+
+  monthPicker?.addEventListener('change', async () => {
+    await reloadAll();
+  });
+
+  async function reloadAll() {
+    try {
+      await Promise.all([loadEmployees(), loadAttendance()]);
+      renderTable();
+    } catch (error) {
+      payrollBody.innerHTML = `<tr><td class="py-6 text-error">${escapeHtml(error instanceof Error ? error.message : 'No se pudo cargar nómina')}</td></tr>`;
+    }
+  }
+
+  async function init() {
+    monthPicker.value = monthValue(currentMonthDate);
+    await loadProjectName();
+    await reloadAll();
+  }
+
+  init();
+</script>
