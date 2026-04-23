@@ -19,13 +19,16 @@ export async function getStaticPaths() { return []; }
       <div>
         <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold text-on-surface">Proyecto #{projectId}</h1>
         <h2 class="mt-1 text-lg font-semibold text-on-surface">Nómina de cuadrillas</h2>
-        <p class="text-sm text-on-surface-variant">Marca asistencia diaria por empleado: Día, Noche o Redoble (ambos checks).</p>
+        <p class="text-sm text-on-surface-variant">Marca asistencia semanal (lunes a domingo): Día, Noche y Extra (media jornada adicional).</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <button id="prev-month" type="button" class="rounded-lg border border-outline-variant px-3 py-2 text-on-surface cursor-pointer">◀</button>
-        <input id="month-picker" type="month" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
-        <button id="next-month" type="button" class="rounded-lg border border-outline-variant px-3 py-2 text-on-surface cursor-pointer">▶</button>
+        <button id="prev-week" type="button" class="rounded-lg border border-outline-variant px-3 py-2 text-on-surface cursor-pointer">◀</button>
+        <div class="flex flex-col gap-1">
+          <label for="week-picker" class="text-[11px] uppercase tracking-wide text-on-surface-variant">Semana (elige fecha)</label>
+          <input id="week-picker" type="date" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+        </div>
+        <button id="next-week" type="button" class="rounded-lg border border-outline-variant px-3 py-2 text-on-surface cursor-pointer">▶</button>
       </div>
     </section>
 
@@ -81,9 +84,9 @@ export async function getStaticPaths() { return []; }
 <script type="module">
   const projectNameEl = document.getElementById('project-name');
   const projectId = Number(projectNameEl?.dataset.projectId || 0);
-  const monthPicker = document.getElementById('month-picker');
-  const prevMonthBtn = document.getElementById('prev-month');
-  const nextMonthBtn = document.getElementById('next-month');
+  const weekPicker = document.getElementById('week-picker');
+  const prevWeekBtn = document.getElementById('prev-week');
+  const nextWeekBtn = document.getElementById('next-week');
 
   const employeeForm = document.getElementById('employee-form');
   const employeeNameInput = document.getElementById('employee-name');
@@ -103,22 +106,44 @@ export async function getStaticPaths() { return []; }
   const _meta = document.querySelector('meta[name="api-base"]');
   const apiBase = (_meta ? _meta.content : 'http://localhost/Budget/api').replace(/\/$/, '');
 
-  let currentMonthDate = new Date();
+  let currentWeekDate = new Date();
   let employees = [];
   let attendanceMap = new Map();
 
-  function monthValue(date) {
+  function dateValue(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
-  function rangeFromMonth(value) {
-    const [y, m] = String(value).split('-').map(Number);
-    const first = new Date(y, (m || 1) - 1, 1);
-    const last = new Date(y, (m || 1), 0);
-    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { start: fmt(first), end: fmt(last), year: y, monthIndex: first.getMonth(), days: last.getDate() };
+  function isoDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  function weekRangeFromDate(value) {
+    const parsed = new Date(`${String(value || '').slice(0, 10)}T00:00:00`);
+    const base = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    const day = base.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const startDate = new Date(base);
+    startDate.setDate(base.getDate() + diffToMonday);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+
+    const dates = Array.from({ length: 7 }, (_, idx) => {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + idx);
+      return isoDate(d);
+    });
+
+    return {
+      start: isoDate(startDate),
+      end: isoDate(endDate),
+      startDate,
+      endDate,
+      dates,
+    };
   }
 
   function escapeHtml(value) {
@@ -133,6 +158,11 @@ export async function getStaticPaths() { return []; }
   function money(value) {
     const n = Number(value || 0);
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
+  }
+
+  function qty(value) {
+    const n = Number(value || 0);
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
   }
 
   function keyFor(employeeId, workDate) {
@@ -168,7 +198,7 @@ export async function getStaticPaths() { return []; }
   }
 
   async function loadAttendance() {
-    const range = rangeFromMonth(monthPicker.value || monthValue(currentMonthDate));
+    const range = weekRangeFromDate(weekPicker.value || dateValue(currentWeekDate));
     const url = `${apiBase}/payroll_attendance.php?project_id=${encodeURIComponent(String(projectId))}&start_date=${encodeURIComponent(range.start)}&end_date=${encodeURIComponent(range.end)}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('No se pudo cargar asistencia');
@@ -184,8 +214,8 @@ export async function getStaticPaths() { return []; }
     });
   }
 
-  function getDateLabel(year, monthIndex, day) {
-    const d = new Date(year, monthIndex, day);
+  function getDateLabelFromISO(workDate) {
+    const d = new Date(`${workDate}T00:00:00`);
     return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric' }).format(d);
   }
 
@@ -197,23 +227,23 @@ export async function getStaticPaths() { return []; }
 
     dates.forEach((date) => {
       const item = attendanceMap.get(keyFor(employee.id, date));
-      const workedDay = Number(item?.worked_day || 0) === 1;
-      const workedNight = Number(item?.worked_night || 0) === 1;
+      const workedDay = Number(item?.worked_day || 0);
+      const workedNight = Number(item?.worked_night || 0);
 
-      if (workedDay) dayCount += 1;
-      if (workedNight) nightCount += 1;
-      if (workedDay && workedNight) redouble += 1;
-      total += (workedDay ? Number(employee.day_rate || 0) : 0) + (workedNight ? Number(employee.night_rate || 0) : 0);
+      dayCount += workedDay;
+      nightCount += workedNight;
+      if (workedDay >= 1 && workedNight >= 1) redouble += 1;
+      total += (workedDay * Number(employee.day_rate || 0)) + (workedNight * Number(employee.night_rate || 0));
     });
 
     return { dayCount, nightCount, redouble, total };
   }
 
   function renderTable() {
-    const range = rangeFromMonth(monthPicker.value || monthValue(currentMonthDate));
-    const dates = Array.from({ length: range.days }, (_, i) => `${range.start.slice(0, 8)}${String(i + 1).padStart(2, '0')}`);
+    const range = weekRangeFromDate(weekPicker.value || dateValue(currentWeekDate));
+    const dates = range.dates;
 
-    const dayHeaders = dates.map((_, idx) => `<th class="border border-outline-variant/20 px-2 py-2 text-[11px] text-on-surface-variant">${escapeHtml(getDateLabel(range.year, range.monthIndex, idx + 1))}</th>`).join('');
+    const dayHeaders = dates.map((workDate) => `<th class="border border-outline-variant/20 px-2 py-2 text-[11px] text-on-surface-variant">${escapeHtml(getDateLabelFromISO(workDate))}</th>`).join('');
     payrollHead.innerHTML = `
       <tr>
         <th class="border border-outline-variant/20 px-3 py-2 text-left text-xs text-on-surface-variant">Empleado</th>
@@ -245,19 +275,26 @@ export async function getStaticPaths() { return []; }
     const rows = employees.map((employee) => {
       const dayCells = dates.map((workDate) => {
         const item = attendanceMap.get(keyFor(employee.id, workDate));
-        const workedDay = Number(item?.worked_day || 0) === 1;
-        const workedNight = Number(item?.worked_night || 0) === 1;
+        const workedDay = Number(item?.worked_day || 0);
+        const workedNight = Number(item?.worked_night || 0);
+        const checkedDay = workedDay >= 1;
+        const checkedNight = workedNight >= 1;
+        const checkedExtra = workedDay === 1.5 || workedNight === 1.5;
 
         return `
           <td class="border border-outline-variant/20 px-1 py-1">
             <div class="flex items-center justify-center gap-1" data-cell="1" data-employee-id="${employee.id}" data-work-date="${workDate}">
               <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
                 D
-                <input type="checkbox" data-shift="day" ${workedDay ? 'checked' : ''} />
+                <input type="checkbox" data-shift="day" ${checkedDay ? 'checked' : ''} />
               </label>
               <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
                 N
-                <input type="checkbox" data-shift="night" ${workedNight ? 'checked' : ''} />
+                <input type="checkbox" data-shift="night" ${checkedNight ? 'checked' : ''} />
+              </label>
+              <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
+                +
+                <input type="checkbox" data-shift="extra" ${checkedExtra ? 'checked' : ''} />
               </label>
             </div>
           </td>
@@ -282,8 +319,8 @@ export async function getStaticPaths() { return []; }
             <input type="number" step="0.01" min="0" data-rate="night" data-employee-id="${employee.id}" value="${Number(employee.night_rate || 0).toFixed(2)}" class="w-24 rounded border border-outline-variant bg-surface px-2 py-1 text-right text-sm" />
           </td>
           ${dayCells}
-          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.dayCount}</td>
-          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.nightCount}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${qty(stats.dayCount)}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${qty(stats.nightCount)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.redouble}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm font-semibold">${money(stats.total)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-center">
@@ -374,17 +411,41 @@ export async function getStaticPaths() { return []; }
     const workDate = String(cell.dataset.workDate || '');
     const dayCheckbox = cell.querySelector('input[data-shift="day"]');
     const nightCheckbox = cell.querySelector('input[data-shift="night"]');
+    const extraCheckbox = cell.querySelector('input[data-shift="extra"]');
 
-    if (!(dayCheckbox instanceof HTMLInputElement) || !(nightCheckbox instanceof HTMLInputElement)) return;
+    if (!(dayCheckbox instanceof HTMLInputElement) || !(nightCheckbox instanceof HTMLInputElement) || !(extraCheckbox instanceof HTMLInputElement)) return;
+
+    const hasDay = dayCheckbox.checked;
+    const hasNight = nightCheckbox.checked;
+    const hasExtra = extraCheckbox.checked;
+
+    if (hasExtra && ((hasDay && hasNight) || (!hasDay && !hasNight))) {
+      alert('El extra solo aplica con un turno: Día o Noche.');
+      const current = attendanceMap.get(keyFor(employeeId, workDate));
+      const currentDay = Number(current?.worked_day || 0);
+      const currentNight = Number(current?.worked_night || 0);
+      dayCheckbox.checked = currentDay >= 1;
+      nightCheckbox.checked = currentNight >= 1;
+      extraCheckbox.checked = currentDay === 1.5 || currentNight === 1.5;
+      return;
+    }
+
+    let workedDay = hasDay ? 1 : 0;
+    let workedNight = hasNight ? 1 : 0;
+    if (hasExtra && hasDay && !hasNight) workedDay = 1.5;
+    if (hasExtra && hasNight && !hasDay) workedNight = 1.5;
 
     try {
-      await saveAttendance(employeeId, workDate, dayCheckbox.checked ? 1 : 0, nightCheckbox.checked ? 1 : 0);
+      await saveAttendance(employeeId, workDate, workedDay, workedNight);
       renderTable();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'No se pudo guardar la asistencia');
       const current = attendanceMap.get(keyFor(employeeId, workDate));
-      dayCheckbox.checked = Number(current?.worked_day || 0) === 1;
-      nightCheckbox.checked = Number(current?.worked_night || 0) === 1;
+      const currentDay = Number(current?.worked_day || 0);
+      const currentNight = Number(current?.worked_night || 0);
+      dayCheckbox.checked = currentDay >= 1;
+      nightCheckbox.checked = currentNight >= 1;
+      extraCheckbox.checked = currentDay === 1.5 || currentNight === 1.5;
     }
   });
 
@@ -449,23 +510,23 @@ export async function getStaticPaths() { return []; }
     }
   });
 
-  function moveMonth(offset) {
-    const current = rangeFromMonth(monthPicker.value || monthValue(new Date()));
-    const date = new Date(current.year, current.monthIndex + offset, 1);
-    monthPicker.value = monthValue(date);
+  function moveWeek(offset) {
+    const base = new Date(`${String(weekPicker.value || dateValue(new Date())).slice(0, 10)}T00:00:00`);
+    base.setDate(base.getDate() + (offset * 7));
+    weekPicker.value = dateValue(base);
   }
 
-  prevMonthBtn?.addEventListener('click', async () => {
-    moveMonth(-1);
+  prevWeekBtn?.addEventListener('click', async () => {
+    moveWeek(-1);
     await reloadAll();
   });
 
-  nextMonthBtn?.addEventListener('click', async () => {
-    moveMonth(1);
+  nextWeekBtn?.addEventListener('click', async () => {
+    moveWeek(1);
     await reloadAll();
   });
 
-  monthPicker?.addEventListener('change', async () => {
+  weekPicker?.addEventListener('change', async () => {
     await reloadAll();
   });
 
@@ -479,7 +540,7 @@ export async function getStaticPaths() { return []; }
   }
 
   async function init() {
-    monthPicker.value = monthValue(currentMonthDate);
+    weekPicker.value = dateValue(currentWeekDate);
     await loadProjectName();
     await reloadAll();
   }

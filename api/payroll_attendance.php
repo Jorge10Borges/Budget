@@ -26,6 +26,19 @@ function month_bounds($dateLike) {
     return [$start, $end];
 }
 
+function normalize_shift_value($value) {
+    $n = is_numeric($value) ? (float)$value : 0.0;
+    if ($n < 0) $n = 0.0;
+    if ($n > 1.5) $n = 1.5;
+    $allowed = [0.0, 0.5, 1.0, 1.5];
+    foreach ($allowed as $v) {
+        if (abs($n - $v) < 0.0001) {
+            return $v;
+        }
+    }
+    return 0.0;
+}
+
 function get_employee($mysqli, $employee_id, $project_id) {
     $stmt = $mysqli->prepare('SELECT id, project_id, full_name, crew, day_rate, night_rate, is_active FROM employees WHERE id = ? AND project_id = ? LIMIT 1');
     $stmt->bind_param('ii', $employee_id, $project_id);
@@ -57,8 +70,8 @@ try {
 
         $sql = 'SELECT pe.id, pe.employee_id, pe.work_date, pe.worked_day, pe.worked_night, pe.notes,
                        e.full_name, e.crew, e.day_rate, e.night_rate,
-                       ((CASE WHEN pe.worked_day = 1 THEN e.day_rate ELSE 0 END) +
-                        (CASE WHEN pe.worked_night = 1 THEN e.night_rate ELSE 0 END)) AS total_amount
+                   ((pe.worked_day * e.day_rate) +
+                (pe.worked_night * e.night_rate)) AS total_amount
                 FROM payroll_entries pe
                 INNER JOIN employees e ON e.id = pe.employee_id
                 WHERE e.project_id = ?
@@ -78,13 +91,13 @@ try {
         ];
 
         while ($r = $res->fetch_assoc()) {
-            $r['worked_day'] = (int)$r['worked_day'];
-            $r['worked_night'] = (int)$r['worked_night'];
+            $r['worked_day'] = (float)$r['worked_day'];
+            $r['worked_night'] = (float)$r['worked_night'];
             $r['total_amount'] = (float)$r['total_amount'];
 
-            $summary['worked_day_count'] += $r['worked_day'] ? 1 : 0;
-            $summary['worked_night_count'] += $r['worked_night'] ? 1 : 0;
-            $summary['redouble_count'] += ($r['worked_day'] && $r['worked_night']) ? 1 : 0;
+            $summary['worked_day_count'] += $r['worked_day'];
+            $summary['worked_night_count'] += $r['worked_night'];
+            $summary['redouble_count'] += ($r['worked_day'] >= 1.0 && $r['worked_night'] >= 1.0) ? 1 : 0;
             $summary['total_amount'] += $r['total_amount'];
 
             $rows[] = $r;
@@ -110,8 +123,8 @@ try {
         $project_id = isset($body['project_id']) ? (int)$body['project_id'] : 0;
         $employee_id = isset($body['employee_id']) ? (int)$body['employee_id'] : 0;
         $work_date = isset($body['work_date']) ? trim((string)$body['work_date']) : '';
-        $worked_day = isset($body['worked_day']) ? (int)((bool)$body['worked_day']) : 0;
-        $worked_night = isset($body['worked_night']) ? (int)((bool)$body['worked_night']) : 0;
+        $worked_day = isset($body['worked_day']) ? normalize_shift_value($body['worked_day']) : 0.0;
+        $worked_night = isset($body['worked_night']) ? normalize_shift_value($body['worked_night']) : 0.0;
         $notes = isset($body['notes']) ? trim((string)$body['notes']) : null;
 
         if ($project_id <= 0 || $employee_id <= 0 || $work_date === '') {
@@ -132,7 +145,7 @@ try {
             exit;
         }
 
-        if ($worked_day === 0 && $worked_night === 0) {
+        if ($worked_day == 0.0 && $worked_night == 0.0) {
             $del = $mysqli->prepare('DELETE FROM payroll_entries WHERE employee_id = ? AND work_date = ?');
             $del->bind_param('is', $employee_id, $work_date);
             if (!$del->execute()) {
@@ -161,7 +174,7 @@ try {
                     notes = VALUES(notes),
                     updated_at = CURRENT_TIMESTAMP';
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('isiis', $employee_id, $work_date, $worked_day, $worked_night, $notes);
+        $stmt->bind_param('isdds', $employee_id, $work_date, $worked_day, $worked_night, $notes);
         if (!$stmt->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Upsert failed', 'message' => $stmt->error]);
@@ -169,7 +182,7 @@ try {
         }
         $stmt->close();
 
-        $total_amount = (($worked_day ? (float)$employee['day_rate'] : 0.0) + ($worked_night ? (float)$employee['night_rate'] : 0.0));
+        $total_amount = (($worked_day * (float)$employee['day_rate']) + ($worked_night * (float)$employee['night_rate']));
 
         echo json_encode(['data' => [
             'employee_id' => $employee_id,
