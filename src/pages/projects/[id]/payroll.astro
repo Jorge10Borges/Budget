@@ -52,18 +52,15 @@ export async function getStaticPaths() { return []; }
     </section>
 
     <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4">
-      <h3 class="text-lg font-semibold text-on-surface">Alta de empleado</h3>
-      <form id="employee-form" class="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3">
-        <input id="employee-name" required placeholder="Nombre completo" class="md:col-span-2 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
-        <select id="employee-crew" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface">
-          <option value="day">Cuadrilla día</option>
-          <option value="night">Cuadrilla noche</option>
-        </select>
-        <input id="employee-day-rate" type="number" min="0" step="0.01" required placeholder="Tarifa día" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
-        <input id="employee-night-rate" type="number" min="0" step="0.01" required placeholder="Tarifa noche" class="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
-        <button type="submit" class="md:col-span-5 justify-self-end rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">Agregar empleado</button>
-      </form>
-      <p id="employee-form-error" class="hidden mt-2 text-sm text-error"></p>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-semibold text-on-surface">Administración de empleados</h3>
+          <p class="text-sm text-on-surface-variant">Crea, edita o desactiva empleados desde acciones rápidas.</p>
+        </div>
+        <button id="open-employee-modal" type="button" class="rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">
+          Agregar empleado
+        </button>
+      </div>
     </section>
 
     <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4">
@@ -76,6 +73,57 @@ export async function getStaticPaths() { return []; }
         </table>
       </div>
     </section>
+
+    <div id="employee-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+      <div class="fixed inset-0 bg-black/40" data-dismiss="employee-modal"></div>
+      <div class="z-10 w-full max-w-2xl mx-4 rounded-2xl border border-outline-variant/20 bg-surface p-5 shadow-xl">
+        <div class="flex items-center justify-between gap-3">
+          <h3 id="employee-modal-title" class="text-lg font-semibold text-on-surface">Agregar empleado</h3>
+          <button id="employee-modal-close" type="button" class="rounded-lg border border-outline-variant px-2 py-1 text-sm text-on-surface cursor-pointer">Cerrar</button>
+        </div>
+        <form id="employee-modal-form" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input id="employee-modal-id" type="hidden" />
+          <div class="md:col-span-2">
+            <label for="employee-modal-name" class="text-xs uppercase tracking-wide text-on-surface-variant">Nombre completo</label>
+            <input id="employee-modal-name" required placeholder="Nombre completo" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div>
+            <label for="employee-modal-crew" class="text-xs uppercase tracking-wide text-on-surface-variant">Cuadrilla</label>
+            <select id="employee-modal-crew" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface">
+              <option value="day">Cuadrilla día</option>
+              <option value="night">Cuadrilla noche</option>
+            </select>
+          </div>
+          <div>
+            <label for="employee-modal-day-rate" class="text-xs uppercase tracking-wide text-on-surface-variant">Tarifa día</label>
+            <input id="employee-modal-day-rate" type="number" min="0" step="0.01" required class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div>
+            <label for="employee-modal-night-rate" class="text-xs uppercase tracking-wide text-on-surface-variant">Tarifa noche</label>
+            <input id="employee-modal-night-rate" type="number" min="0" step="0.01" required class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div class="md:col-span-2 flex justify-end gap-2 mt-1">
+            <button id="employee-modal-cancel" type="button" class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar</button>
+            <button id="employee-modal-submit" type="submit" class="rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">Guardar</button>
+          </div>
+          <p id="employee-modal-error" class="hidden md:col-span-2 text-sm text-error"></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="employee-delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+      <div class="fixed inset-0 bg-black/40" data-dismiss="employee-delete-modal"></div>
+      <div class="z-10 w-full max-w-sm mx-4 rounded-2xl border border-outline-variant/20 bg-surface p-5 shadow-xl">
+        <h3 class="text-lg font-semibold text-on-surface">Confirmar eliminación</h3>
+        <p class="mt-2 text-sm text-on-surface-variant">
+          ¿Deseas eliminar al empleado <span id="employee-delete-name" class="font-semibold text-on-surface">—</span>?
+        </p>
+        <div class="mt-4 flex justify-end gap-2">
+          <button id="employee-delete-cancel" type="button" class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar</button>
+          <button id="employee-delete-confirm" type="button" class="rounded-lg bg-error px-4 py-2 text-on-primary cursor-pointer">Eliminar</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <NavBarMobil />
@@ -88,12 +136,24 @@ export async function getStaticPaths() { return []; }
   const prevWeekBtn = document.getElementById('prev-week');
   const nextWeekBtn = document.getElementById('next-week');
 
-  const employeeForm = document.getElementById('employee-form');
-  const employeeNameInput = document.getElementById('employee-name');
-  const employeeCrewInput = document.getElementById('employee-crew');
-  const employeeDayRateInput = document.getElementById('employee-day-rate');
-  const employeeNightRateInput = document.getElementById('employee-night-rate');
-  const employeeFormError = document.getElementById('employee-form-error');
+  const openEmployeeModalBtn = document.getElementById('open-employee-modal');
+  const employeeModal = document.getElementById('employee-modal');
+  const employeeModalTitle = document.getElementById('employee-modal-title');
+  const employeeModalForm = document.getElementById('employee-modal-form');
+  const employeeModalIdInput = document.getElementById('employee-modal-id');
+  const employeeModalNameInput = document.getElementById('employee-modal-name');
+  const employeeModalCrewInput = document.getElementById('employee-modal-crew');
+  const employeeModalDayRateInput = document.getElementById('employee-modal-day-rate');
+  const employeeModalNightRateInput = document.getElementById('employee-modal-night-rate');
+  const employeeModalSubmitBtn = document.getElementById('employee-modal-submit');
+  const employeeModalError = document.getElementById('employee-modal-error');
+  const employeeModalCloseBtn = document.getElementById('employee-modal-close');
+  const employeeModalCancelBtn = document.getElementById('employee-modal-cancel');
+
+  const employeeDeleteModal = document.getElementById('employee-delete-modal');
+  const employeeDeleteName = document.getElementById('employee-delete-name');
+  const employeeDeleteCancelBtn = document.getElementById('employee-delete-cancel');
+  const employeeDeleteConfirmBtn = document.getElementById('employee-delete-confirm');
 
   const payrollHead = document.getElementById('payroll-head');
   const payrollBody = document.getElementById('payroll-body');
@@ -109,6 +169,7 @@ export async function getStaticPaths() { return []; }
   let currentWeekDate = new Date();
   let employees = [];
   let attendanceMap = new Map();
+  let employeeDeleteTargetId = 0;
 
   function dateValue(date) {
     const y = date.getFullYear();
@@ -169,10 +230,55 @@ export async function getStaticPaths() { return []; }
     return `${employeeId}|${workDate}`;
   }
 
-  function showFormError(message = '') {
-    if (!employeeFormError) return;
-    employeeFormError.textContent = message;
-    employeeFormError.classList.toggle('hidden', message === '');
+  function showEmployeeModalError(message = '') {
+    if (!employeeModalError) return;
+    employeeModalError.textContent = message;
+    employeeModalError.classList.toggle('hidden', message === '');
+  }
+
+  function findEmployeeById(employeeId) {
+    return employees.find((employee) => String(employee.id) === String(employeeId)) || null;
+  }
+
+  function openEmployeeModal(employee = null) {
+    if (!employeeModal) return;
+    const isEdit = !!employee;
+    showEmployeeModalError('');
+    employeeModalTitle.textContent = isEdit ? 'Editar empleado' : 'Agregar empleado';
+    employeeModalSubmitBtn.textContent = isEdit ? 'Guardar cambios' : 'Crear empleado';
+
+    employeeModalIdInput.value = isEdit ? String(employee.id) : '';
+    employeeModalNameInput.value = isEdit ? String(employee.full_name || '') : '';
+    employeeModalCrewInput.value = isEdit ? String(employee.crew || 'day') : 'day';
+    employeeModalDayRateInput.value = Number(isEdit ? employee.day_rate : 0).toFixed(2);
+    employeeModalNightRateInput.value = Number(isEdit ? employee.night_rate : 0).toFixed(2);
+
+    employeeModal.classList.remove('hidden');
+    employeeModal.classList.add('flex');
+    employeeModalNameInput.focus();
+  }
+
+  function closeEmployeeModal() {
+    if (!employeeModal) return;
+    employeeModal.classList.add('hidden');
+    employeeModal.classList.remove('flex');
+  }
+
+  function openEmployeeDeleteModal(employee) {
+    if (!employeeDeleteModal || !employee) return;
+    employeeDeleteTargetId = Number(employee.id || 0);
+    if (employeeDeleteName) {
+      employeeDeleteName.textContent = String(employee.full_name || '—');
+    }
+    employeeDeleteModal.classList.remove('hidden');
+    employeeDeleteModal.classList.add('flex');
+  }
+
+  function closeEmployeeDeleteModal() {
+    if (!employeeDeleteModal) return;
+    employeeDeleteModal.classList.add('hidden');
+    employeeDeleteModal.classList.remove('flex');
+    employeeDeleteTargetId = 0;
   }
 
   async function loadProjectName() {
@@ -194,7 +300,11 @@ export async function getStaticPaths() { return []; }
     const res = await fetch(`${apiBase}/payroll_employees.php?project_id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('No se pudieron cargar empleados');
     const data = await res.json();
-    employees = Array.isArray(data?.data) ? data.data : [];
+    employees = (Array.isArray(data?.data) ? data.data : []).slice().sort((a, b) => {
+      const nameA = String(a?.full_name || '');
+      const nameB = String(b?.full_name || '');
+      return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
   }
 
   async function loadAttendance() {
@@ -210,6 +320,7 @@ export async function getStaticPaths() { return []; }
       attendanceMap.set(keyFor(row.employee_id, row.work_date), {
         worked_day: Number(row.worked_day || 0),
         worked_night: Number(row.worked_night || 0),
+        paid_amount: Number(row.paid_amount || row.total_amount || 0),
       });
     });
   }
@@ -229,11 +340,13 @@ export async function getStaticPaths() { return []; }
       const item = attendanceMap.get(keyFor(employee.id, date));
       const workedDay = Number(item?.worked_day || 0);
       const workedNight = Number(item?.worked_night || 0);
+      const paidAmount = Number(item?.paid_amount || 0);
+      const calculatedAmount = (workedDay * Number(employee.day_rate || 0)) + (workedNight * Number(employee.night_rate || 0));
 
       dayCount += workedDay;
       nightCount += workedNight;
       if (workedDay >= 1 && workedNight >= 1) redouble += 1;
-      total += (workedDay * Number(employee.day_rate || 0)) + (workedNight * Number(employee.night_rate || 0));
+      total += paidAmount > 0 ? paidAmount : calculatedAmount;
     });
 
     return { dayCount, nightCount, redouble, total };
@@ -242,6 +355,7 @@ export async function getStaticPaths() { return []; }
   function renderTable() {
     const range = weekRangeFromDate(weekPicker.value || dateValue(currentWeekDate));
     const dates = range.dates;
+    const totalColumns = 9 + dates.length;
 
     const dayHeaders = dates.map((workDate) => `<th class="border border-outline-variant/20 px-2 py-2 text-[11px] text-on-surface-variant">${escapeHtml(getDateLabelFromISO(workDate))}</th>`).join('');
     payrollHead.innerHTML = `
@@ -260,7 +374,7 @@ export async function getStaticPaths() { return []; }
     `;
 
     if (!employees.length) {
-      payrollBody.innerHTML = '<tr><td colspan="10" class="py-6 text-on-surface-variant">No hay empleados en este proyecto.</td></tr>';
+      payrollBody.innerHTML = `<tr><td colspan="${totalColumns}" class="py-6 text-on-surface-variant">No hay empleados en este proyecto.</td></tr>`;
       kpiEmployees.textContent = '0';
       kpiDay.textContent = '0';
       kpiNight.textContent = '0';
@@ -286,15 +400,15 @@ export async function getStaticPaths() { return []; }
             <div class="flex items-center justify-center gap-1" data-cell="1" data-employee-id="${employee.id}" data-work-date="${workDate}">
               <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
                 D
-                <input type="checkbox" data-shift="day" ${checkedDay ? 'checked' : ''} />
+                <input type="checkbox" data-shift="day" class="cursor-pointer" ${checkedDay ? 'checked' : ''} />
               </label>
               <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
                 N
-                <input type="checkbox" data-shift="night" ${checkedNight ? 'checked' : ''} />
+                <input type="checkbox" data-shift="night" class="cursor-pointer" ${checkedNight ? 'checked' : ''} />
               </label>
               <label class="text-[10px] text-on-surface-variant inline-flex items-center gap-1">
                 +
-                <input type="checkbox" data-shift="extra" ${checkedExtra ? 'checked' : ''} />
+                <input type="checkbox" data-shift="extra" class="cursor-pointer" ${checkedExtra ? 'checked' : ''} />
               </label>
             </div>
           </td>
@@ -312,19 +426,22 @@ export async function getStaticPaths() { return []; }
         <tr>
           <td class="border border-outline-variant/20 px-3 py-2 text-sm font-medium">${escapeHtml(employee.full_name)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-sm">${crewLabel}</td>
-          <td class="border border-outline-variant/20 px-3 py-2 text-right">
-            <input type="number" step="0.01" min="0" data-rate="day" data-employee-id="${employee.id}" value="${Number(employee.day_rate || 0).toFixed(2)}" class="w-24 rounded border border-outline-variant bg-surface px-2 py-1 text-right text-sm" />
-          </td>
-          <td class="border border-outline-variant/20 px-3 py-2 text-right">
-            <input type="number" step="0.01" min="0" data-rate="night" data-employee-id="${employee.id}" value="${Number(employee.night_rate || 0).toFixed(2)}" class="w-24 rounded border border-outline-variant bg-surface px-2 py-1 text-right text-sm" />
-          </td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${money(employee.day_rate)}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${money(employee.night_rate)}</td>
           ${dayCells}
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${qty(stats.dayCount)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${qty(stats.nightCount)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${stats.redouble}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm font-semibold">${money(stats.total)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-center">
-            <button type="button" data-action="save-rates" data-employee-id="${employee.id}" class="rounded bg-primary px-2 py-1 text-xs text-on-primary cursor-pointer">Guardar</button>
+            <div class="inline-flex items-center gap-2">
+              <button type="button" data-action="edit-employee" data-employee-id="${employee.id}" class="rounded p-1 text-primary transition hover:bg-button-hover cursor-pointer" title="Editar" aria-label="Editar empleado">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button type="button" data-action="delete-employee" data-employee-id="${employee.id}" class="rounded p-1 text-error transition hover:bg-button-hover cursor-pointer" title="Eliminar" aria-label="Eliminar empleado">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -364,40 +481,9 @@ export async function getStaticPaths() { return []; }
       attendanceMap.set(keyFor(employeeId, workDate), {
         worked_day: Number(data?.data?.worked_day || 0),
         worked_night: Number(data?.data?.worked_night || 0),
+        paid_amount: Number(data?.data?.paid_amount || data?.data?.total_amount || 0),
       });
     }
-  }
-
-  async function saveEmployeeRates(employeeId) {
-    const dayInput = payrollBody.querySelector(`input[data-rate="day"][data-employee-id="${employeeId}"]`);
-    const nightInput = payrollBody.querySelector(`input[data-rate="night"][data-employee-id="${employeeId}"]`);
-    if (!(dayInput instanceof HTMLInputElement) || !(nightInput instanceof HTMLInputElement)) return;
-
-    const body = {
-      id: Number(employeeId),
-      day_rate: Number(dayInput.value || 0),
-      night_rate: Number(nightInput.value || 0),
-    };
-
-    const res = await fetch(`${apiBase}/payroll_employees.php?id=${encodeURIComponent(String(employeeId))}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || data.message || 'No se pudieron actualizar tarifas');
-    }
-
-    employees = employees.map((employee) => {
-      if (String(employee.id) !== String(employeeId)) return employee;
-      return {
-        ...employee,
-        day_rate: body.day_rate,
-        night_rate: body.night_rate,
-      };
-    });
   }
 
   payrollBody.addEventListener('change', async (event) => {
@@ -450,63 +536,121 @@ export async function getStaticPaths() { return []; }
   });
 
   payrollBody.addEventListener('click', async (event) => {
-    const btn = event.target instanceof HTMLElement ? event.target.closest('button[data-action="save-rates"]') : null;
+    const btn = event.target instanceof HTMLElement ? event.target.closest('button[data-action]') : null;
     if (!(btn instanceof HTMLButtonElement)) return;
 
     const employeeId = Number(btn.dataset.employeeId || 0);
     if (!employeeId) return;
 
-    const oldText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Guardando...';
-
-    try {
-      await saveEmployeeRates(employeeId);
-      renderTable();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'No se pudieron guardar tarifas');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = oldText;
-    }
-  });
-
-  employeeForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    showFormError('');
-
-    const payload = {
-      project_id: projectId,
-      full_name: String(employeeNameInput?.value || '').trim(),
-      crew: String(employeeCrewInput?.value || 'day').trim(),
-      day_rate: Number(employeeDayRateInput?.value || 0),
-      night_rate: Number(employeeNightRateInput?.value || 0),
-    };
-
-    if (!payload.full_name) {
-      showFormError('Ingresa el nombre del empleado');
+    if (btn.dataset.action === 'edit-employee') {
+      const employee = findEmployeeById(employeeId);
+      if (employee) {
+        openEmployeeModal(employee);
+      }
       return;
     }
 
+    if (btn.dataset.action === 'delete-employee') {
+      const employee = findEmployeeById(employeeId);
+      if (employee) {
+        openEmployeeDeleteModal(employee);
+      }
+    }
+  });
+
+  employeeModalForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    showEmployeeModalError('');
+
+    const employeeId = Number(employeeModalIdInput.value || 0);
+    const isEdit = employeeId > 0;
+
+    const payload = {
+      project_id: projectId,
+      full_name: String(employeeModalNameInput?.value || '').trim(),
+      crew: String(employeeModalCrewInput?.value || 'day').trim(),
+      day_rate: Number(employeeModalDayRateInput?.value || 0),
+      night_rate: Number(employeeModalNightRateInput?.value || 0),
+    };
+
+    if (!payload.full_name) {
+      showEmployeeModalError('Ingresa el nombre del empleado');
+      return;
+    }
+
+    const oldText = employeeModalSubmitBtn.textContent;
+    employeeModalSubmitBtn.disabled = true;
+    employeeModalSubmitBtn.textContent = isEdit ? 'Guardando...' : 'Creando...';
+
     try {
-      const res = await fetch(`${apiBase}/payroll_employees.php`, {
-        method: 'POST',
+      const res = await fetch(`${apiBase}/payroll_employees.php${isEdit ? `?id=${encodeURIComponent(String(employeeId))}` : ''}`, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(isEdit ? { ...payload, id: employeeId } : payload),
       });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || data.message || 'No se pudo crear empleado');
+        throw new Error(data.error || data.message || (isEdit ? 'No se pudo actualizar empleado' : 'No se pudo crear empleado'));
       }
 
-      if (employeeForm instanceof HTMLFormElement) {
-        employeeForm.reset();
-      }
+      closeEmployeeModal();
       await loadEmployees();
       renderTable();
     } catch (error) {
-      showFormError(error instanceof Error ? error.message : 'No se pudo crear empleado');
+      showEmployeeModalError(error instanceof Error ? error.message : (isEdit ? 'No se pudo actualizar empleado' : 'No se pudo crear empleado'));
+    } finally {
+      employeeModalSubmitBtn.disabled = false;
+      employeeModalSubmitBtn.textContent = oldText;
+    }
+  });
+
+  openEmployeeModalBtn?.addEventListener('click', () => {
+    openEmployeeModal(null);
+  });
+
+  employeeModalCloseBtn?.addEventListener('click', closeEmployeeModal);
+  employeeModalCancelBtn?.addEventListener('click', closeEmployeeModal);
+
+  employeeDeleteCancelBtn?.addEventListener('click', closeEmployeeDeleteModal);
+
+  employeeDeleteConfirmBtn?.addEventListener('click', async () => {
+    if (!employeeDeleteTargetId) return;
+
+    const oldText = employeeDeleteConfirmBtn.textContent;
+    employeeDeleteConfirmBtn.disabled = true;
+    employeeDeleteConfirmBtn.textContent = 'Eliminando...';
+
+    try {
+      const res = await fetch(`${apiBase}/payroll_employees.php?id=${encodeURIComponent(String(employeeDeleteTargetId))}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'No se pudo eliminar empleado');
+      }
+
+      closeEmployeeDeleteModal();
+      await loadEmployees();
+      renderTable();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'No se pudo eliminar empleado');
+    } finally {
+      employeeDeleteConfirmBtn.disabled = false;
+      employeeDeleteConfirmBtn.textContent = oldText;
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+
+    const dismissType = target.getAttribute('data-dismiss');
+    if (dismissType === 'employee-modal') {
+      closeEmployeeModal();
+    }
+    if (dismissType === 'employee-delete-modal') {
+      closeEmployeeDeleteModal();
     }
   });
 

@@ -68,10 +68,9 @@ try {
             if ($end_date === '') $end_date = $defaultEnd;
         }
 
-        $sql = 'SELECT pe.id, pe.employee_id, pe.work_date, pe.worked_day, pe.worked_night, pe.notes,
+        $sql = 'SELECT pe.id, pe.employee_id, pe.work_date, pe.worked_day, pe.worked_night, pe.paid_amount, pe.notes,
                        e.full_name, e.crew, e.day_rate, e.night_rate,
-                   ((pe.worked_day * e.day_rate) +
-                (pe.worked_night * e.night_rate)) AS total_amount
+                       pe.paid_amount AS total_amount
                 FROM payroll_entries pe
                 INNER JOIN employees e ON e.id = pe.employee_id
                 WHERE e.project_id = ?
@@ -93,6 +92,7 @@ try {
         while ($r = $res->fetch_assoc()) {
             $r['worked_day'] = (float)$r['worked_day'];
             $r['worked_night'] = (float)$r['worked_night'];
+            $r['paid_amount'] = (float)$r['paid_amount'];
             $r['total_amount'] = (float)$r['total_amount'];
 
             $summary['worked_day_count'] += $r['worked_day'];
@@ -125,11 +125,18 @@ try {
         $work_date = isset($body['work_date']) ? trim((string)$body['work_date']) : '';
         $worked_day = isset($body['worked_day']) ? normalize_shift_value($body['worked_day']) : 0.0;
         $worked_night = isset($body['worked_night']) ? normalize_shift_value($body['worked_night']) : 0.0;
+        $has_paid_amount = array_key_exists('paid_amount', $body) && $body['paid_amount'] !== null && $body['paid_amount'] !== '';
+        $paid_amount = $has_paid_amount ? (float)$body['paid_amount'] : null;
         $notes = isset($body['notes']) ? trim((string)$body['notes']) : null;
 
         if ($project_id <= 0 || $employee_id <= 0 || $work_date === '') {
             http_response_code(400);
             echo json_encode(['error' => 'project_id, employee_id and work_date are required']);
+            exit;
+        }
+        if ($has_paid_amount && $paid_amount < 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'paid_amount must be >= 0']);
             exit;
         }
 
@@ -166,15 +173,19 @@ try {
             exit;
         }
 
-        $sql = 'INSERT INTO payroll_entries (employee_id, work_date, worked_day, worked_night, notes)
-                VALUES (?, ?, ?, ?, ?)
+        $calculated_amount = (($worked_day * (float)$employee['day_rate']) + ($worked_night * (float)$employee['night_rate']));
+        $final_paid_amount = $has_paid_amount ? round($paid_amount, 2) : round($calculated_amount, 2);
+
+        $sql = 'INSERT INTO payroll_entries (employee_id, work_date, worked_day, worked_night, paid_amount, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     worked_day = VALUES(worked_day),
                     worked_night = VALUES(worked_night),
+                    paid_amount = VALUES(paid_amount),
                     notes = VALUES(notes),
                     updated_at = CURRENT_TIMESTAMP';
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('isdds', $employee_id, $work_date, $worked_day, $worked_night, $notes);
+        $stmt->bind_param('isddds', $employee_id, $work_date, $worked_day, $worked_night, $final_paid_amount, $notes);
         if (!$stmt->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Upsert failed', 'message' => $stmt->error]);
@@ -182,14 +193,13 @@ try {
         }
         $stmt->close();
 
-        $total_amount = (($worked_day * (float)$employee['day_rate']) + ($worked_night * (float)$employee['night_rate']));
-
         echo json_encode(['data' => [
             'employee_id' => $employee_id,
             'work_date' => $work_date,
             'worked_day' => $worked_day,
             'worked_night' => $worked_night,
-            'total_amount' => $total_amount,
+            'paid_amount' => $final_paid_amount,
+            'total_amount' => $final_paid_amount,
             'deleted' => false,
         ]]);
         exit;
