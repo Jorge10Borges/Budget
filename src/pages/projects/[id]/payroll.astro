@@ -63,7 +63,7 @@ export async function getStaticPaths() { return []; }
       </div>
     </section>
 
-    <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4">
+    <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4 pb-20">
       <div class="overflow-x-auto">
         <table class="min-w-275 w-full border-collapse" id="payroll-table">
           <thead id="payroll-head"></thead>
@@ -86,6 +86,40 @@ export async function getStaticPaths() { return []; }
           <div class="md:col-span-2">
             <label for="employee-modal-name" class="text-xs uppercase tracking-wide text-on-surface-variant">Nombre completo</label>
             <input id="employee-modal-name" required placeholder="Nombre completo" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div class="md:col-span-2">
+            <label for="employee-modal-id-number" class="text-xs uppercase tracking-wide text-on-surface-variant">Cédula</label>
+            <input id="employee-modal-id-number" placeholder="Ej: V-12345678" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div class="md:col-span-2 mt-1">
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Datos del Pago Móvil</h4>
+          </div>
+          <div>
+            <label for="employee-modal-mobile-bank" class="text-xs uppercase tracking-wide text-on-surface-variant">Banco</label>
+            <input id="employee-modal-mobile-bank" placeholder="Banco" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div>
+            <label for="employee-modal-mobile-id" class="text-xs uppercase tracking-wide text-on-surface-variant">Cédula</label>
+            <input id="employee-modal-mobile-id" placeholder="Cédula" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div class="md:col-span-2">
+            <label for="employee-modal-mobile-phone" class="text-xs uppercase tracking-wide text-on-surface-variant">Teléfono</label>
+            <input id="employee-modal-mobile-phone" placeholder="Ej: 0412-1234567" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div class="md:col-span-2 mt-1">
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Datos de la Cuenta Bancaria</h4>
+          </div>
+          <div class="md:col-span-2">
+            <label for="employee-modal-bank-account-number" class="text-xs uppercase tracking-wide text-on-surface-variant">Nro de Cuenta</label>
+            <input id="employee-modal-bank-account-number" placeholder="Número de cuenta" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div>
+            <label for="employee-modal-bank-holder-name" class="text-xs uppercase tracking-wide text-on-surface-variant">Nombre del Titular</label>
+            <input id="employee-modal-bank-holder-name" placeholder="Nombre del titular" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div>
+            <label for="employee-modal-bank-holder-id" class="text-xs uppercase tracking-wide text-on-surface-variant">Cédula del Titular</label>
+            <input id="employee-modal-bank-holder-id" placeholder="Cédula del titular" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
           </div>
           <div>
             <label for="employee-modal-crew" class="text-xs uppercase tracking-wide text-on-surface-variant">Cuadrilla</label>
@@ -142,6 +176,13 @@ export async function getStaticPaths() { return []; }
   const employeeModalForm = document.getElementById('employee-modal-form');
   const employeeModalIdInput = document.getElementById('employee-modal-id');
   const employeeModalNameInput = document.getElementById('employee-modal-name');
+  const employeeModalIdNumberInput = document.getElementById('employee-modal-id-number');
+  const employeeModalMobileBankInput = document.getElementById('employee-modal-mobile-bank');
+  const employeeModalMobileIdInput = document.getElementById('employee-modal-mobile-id');
+  const employeeModalMobilePhoneInput = document.getElementById('employee-modal-mobile-phone');
+  const employeeModalBankAccountNumberInput = document.getElementById('employee-modal-bank-account-number');
+  const employeeModalBankHolderNameInput = document.getElementById('employee-modal-bank-holder-name');
+  const employeeModalBankHolderIdInput = document.getElementById('employee-modal-bank-holder-id');
   const employeeModalCrewInput = document.getElementById('employee-modal-crew');
   const employeeModalDayRateInput = document.getElementById('employee-modal-day-rate');
   const employeeModalNightRateInput = document.getElementById('employee-modal-night-rate');
@@ -249,6 +290,13 @@ export async function getStaticPaths() { return []; }
 
     employeeModalIdInput.value = isEdit ? String(employee.id) : '';
     employeeModalNameInput.value = isEdit ? String(employee.full_name || '') : '';
+    employeeModalIdNumberInput.value = isEdit ? String(employee.id_number || '') : '';
+    employeeModalMobileBankInput.value = isEdit ? String(employee.mobile_bank || '') : '';
+    employeeModalMobileIdInput.value = isEdit ? String(employee.mobile_id_number || '') : '';
+    employeeModalMobilePhoneInput.value = isEdit ? String(employee.mobile_phone || '') : '';
+    employeeModalBankAccountNumberInput.value = isEdit ? String(employee.bank_account_number || '') : '';
+    employeeModalBankHolderNameInput.value = isEdit ? String(employee.bank_account_holder_name || '') : '';
+    employeeModalBankHolderIdInput.value = isEdit ? String(employee.bank_account_holder_id || '') : '';
     employeeModalCrewInput.value = isEdit ? String(employee.crew || 'day') : 'day';
     employeeModalDayRateInput.value = Number(isEdit ? employee.day_rate : 0).toFixed(2);
     employeeModalNightRateInput.value = Number(isEdit ? employee.night_rate : 0).toFixed(2);
@@ -568,6 +616,13 @@ export async function getStaticPaths() { return []; }
     const payload = {
       project_id: projectId,
       full_name: String(employeeModalNameInput?.value || '').trim(),
+      id_number: String(employeeModalIdNumberInput?.value || '').trim(),
+      mobile_bank: String(employeeModalMobileBankInput?.value || '').trim(),
+      mobile_id_number: String(employeeModalMobileIdInput?.value || '').trim(),
+      mobile_phone: String(employeeModalMobilePhoneInput?.value || '').trim(),
+      bank_account_number: String(employeeModalBankAccountNumberInput?.value || '').trim(),
+      bank_account_holder_name: String(employeeModalBankHolderNameInput?.value || '').trim(),
+      bank_account_holder_id: String(employeeModalBankHolderIdInput?.value || '').trim(),
       crew: String(employeeModalCrewInput?.value || 'day').trim(),
       day_rate: Number(employeeModalDayRateInput?.value || 0),
       night_rate: Number(employeeModalNightRateInput?.value || 0),

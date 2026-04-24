@@ -33,7 +33,7 @@ try {
         $include_inactive = isset($_GET['include_inactive']) && (string)$_GET['include_inactive'] === '1';
 
         if ($id > 0) {
-            $sql = 'SELECT id, project_id, full_name, crew, day_rate, night_rate, is_active, created_at, updated_at
+                $sql = 'SELECT id, project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active, created_at, updated_at
                     FROM employees
                     WHERE id = ? AND project_id = ?
                     LIMIT 1';
@@ -53,7 +53,7 @@ try {
             exit;
         }
 
-        $sql = 'SELECT id, project_id, full_name, crew, day_rate, night_rate, is_active, created_at, updated_at
+        $sql = 'SELECT id, project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active, created_at, updated_at
                 FROM employees
                 WHERE project_id = ?';
         if (!$include_inactive) {
@@ -85,6 +85,13 @@ try {
 
         $project_id = isset($body['project_id']) ? (int)$body['project_id'] : 0;
         $full_name = isset($body['full_name']) ? trim((string)$body['full_name']) : '';
+        $id_number = isset($body['id_number']) ? trim((string)$body['id_number']) : '';
+        $mobile_bank = isset($body['mobile_bank']) ? trim((string)$body['mobile_bank']) : '';
+        $mobile_id_number = isset($body['mobile_id_number']) ? trim((string)$body['mobile_id_number']) : '';
+        $mobile_phone = isset($body['mobile_phone']) ? trim((string)$body['mobile_phone']) : '';
+        $bank_account_number = isset($body['bank_account_number']) ? trim((string)$body['bank_account_number']) : '';
+        $bank_account_holder_name = isset($body['bank_account_holder_name']) ? trim((string)$body['bank_account_holder_name']) : '';
+        $bank_account_holder_id = isset($body['bank_account_holder_id']) ? trim((string)$body['bank_account_holder_id']) : '';
         $crew = isset($body['crew']) ? strtolower(trim((string)$body['crew'])) : 'day';
         $day_rate = isset($body['day_rate']) ? (float)$body['day_rate'] : 0.0;
         $night_rate = isset($body['night_rate']) ? (float)$body['night_rate'] : 0.0;
@@ -110,8 +117,8 @@ try {
             exit;
         }
 
-        $stmt = $mysqli->prepare('INSERT INTO employees (project_id, full_name, crew, day_rate, night_rate, is_active) VALUES (?, ?, ?, ?, ?, 1)');
-        $stmt->bind_param('issdd', $project_id, $full_name, $crew, $day_rate, $night_rate);
+        $stmt = $mysqli->prepare('INSERT INTO employees (project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)');
+        $stmt->bind_param('isssssssssdd', $project_id, $full_name, $id_number, $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate);
         if (!$stmt->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Insert failed', 'message' => $stmt->error]);
@@ -141,7 +148,7 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT id, project_id, full_name, crew, day_rate, night_rate, is_active FROM employees WHERE id = ? LIMIT 1');
+        $sel = $mysqli->prepare('SELECT id, project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active FROM employees WHERE id = ? LIMIT 1');
         $sel->bind_param('i', $id);
         $sel->execute();
         $row = $sel->get_result()->fetch_assoc();
@@ -154,6 +161,13 @@ try {
         }
 
         $full_name = array_key_exists('full_name', $body) ? trim((string)$body['full_name']) : (string)$row['full_name'];
+        $id_number = array_key_exists('id_number', $body) ? trim((string)$body['id_number']) : (string)$row['id_number'];
+        $mobile_bank = array_key_exists('mobile_bank', $body) ? trim((string)$body['mobile_bank']) : (string)$row['mobile_bank'];
+        $mobile_id_number = array_key_exists('mobile_id_number', $body) ? trim((string)$body['mobile_id_number']) : (string)$row['mobile_id_number'];
+        $mobile_phone = array_key_exists('mobile_phone', $body) ? trim((string)$body['mobile_phone']) : (string)$row['mobile_phone'];
+        $bank_account_number = array_key_exists('bank_account_number', $body) ? trim((string)$body['bank_account_number']) : (string)$row['bank_account_number'];
+        $bank_account_holder_name = array_key_exists('bank_account_holder_name', $body) ? trim((string)$body['bank_account_holder_name']) : (string)$row['bank_account_holder_name'];
+        $bank_account_holder_id = array_key_exists('bank_account_holder_id', $body) ? trim((string)$body['bank_account_holder_id']) : (string)$row['bank_account_holder_id'];
         $crew = array_key_exists('crew', $body) ? strtolower(trim((string)$body['crew'])) : (string)$row['crew'];
         $day_rate = array_key_exists('day_rate', $body) ? (float)$body['day_rate'] : (float)$row['day_rate'];
         $night_rate = array_key_exists('night_rate', $body) ? (float)$body['night_rate'] : (float)$row['night_rate'];
@@ -175,8 +189,8 @@ try {
             exit;
         }
 
-        $upd = $mysqli->prepare('UPDATE employees SET full_name = ?, crew = ?, day_rate = ?, night_rate = ?, is_active = ? WHERE id = ? LIMIT 1');
-        $upd->bind_param('ssddii', $full_name, $crew, $day_rate, $night_rate, $is_active, $id);
+        $upd = $mysqli->prepare('UPDATE employees SET full_name = ?, id_number = ?, mobile_bank = ?, mobile_id_number = ?, mobile_phone = ?, bank_account_number = ?, bank_account_holder_name = ?, bank_account_holder_id = ?, crew = ?, day_rate = ?, night_rate = ?, is_active = ? WHERE id = ? LIMIT 1');
+        $upd->bind_param('sssssssssddii', $full_name, $id_number, $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate, $is_active, $id);
         if (!$upd->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Update failed', 'message' => $upd->error]);
