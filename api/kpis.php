@@ -65,9 +65,48 @@ function counts_for_table($mysqli, $table, $project_id, $project_col = 'project_
     return ['total' => $total, 'closed' => $closed];
 }
 
+function sum_expenses_amount($mysqli, $project_id) {
+    if (!table_exists($mysqli, 'expenses') || !column_exists($mysqli, 'expenses', 'amount')) {
+        return 0.0;
+    }
+
+    $stmt = $mysqli->prepare('SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE project_id = ?');
+    $stmt->bind_param('i', $project_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (float)($row['total'] ?? 0);
+}
+
+function sum_payroll_amount($mysqli, $project_id) {
+    if (!table_exists($mysqli, 'payroll_entries') || !table_exists($mysqli, 'employees')) {
+        return 0.0;
+    }
+
+        $sql = 'SELECT COALESCE(SUM(COALESCE(pe.paid_amount, 0)), 0) AS total
+            FROM payroll_entries pe
+            INNER JOIN employees e ON e.id = pe.employee_id
+            WHERE e.project_id = ?';
+
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('i', $project_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (float)($row['total'] ?? 0);
+}
+
 $result = [];
 $result['project_items'] = counts_for_table($mysqli, 'project_items', $project_id, 'project_id');
 $result['expenses'] = counts_for_table($mysqli, 'expenses', $project_id, 'project_id');
 $result['valuations'] = counts_for_table($mysqli, 'valuations', $project_id, 'project_id');
+
+$expenseAmount = sum_expenses_amount($mysqli, $project_id);
+$payrollAmount = sum_payroll_amount($mysqli, $project_id);
+$result['expenses']['amount'] = $expenseAmount;
+$result['expenses']['payroll_amount'] = $payrollAmount;
+$result['expenses']['project_total_amount'] = $expenseAmount + $payrollAmount;
 
 echo json_encode(['data' => $result]);
