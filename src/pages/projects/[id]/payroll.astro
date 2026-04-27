@@ -349,6 +349,16 @@ export async function getStaticPaths() { return []; }
     if (!res.ok) throw new Error('No se pudieron cargar empleados');
     const data = await res.json();
     employees = (Array.isArray(data?.data) ? data.data : []).slice().sort((a, b) => {
+      const crewOrder = { day: 0, night: 1 };
+      const crewA = String(a?.crew || '').toLowerCase();
+      const crewB = String(b?.crew || '').toLowerCase();
+      const crewRankA = Object.prototype.hasOwnProperty.call(crewOrder, crewA) ? crewOrder[crewA] : 99;
+      const crewRankB = Object.prototype.hasOwnProperty.call(crewOrder, crewB) ? crewOrder[crewB] : 99;
+
+      if (crewRankA !== crewRankB) {
+        return crewRankA - crewRankB;
+      }
+
       const nameA = String(a?.full_name || '');
       const nameB = String(b?.full_name || '');
       return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
@@ -468,12 +478,19 @@ export async function getStaticPaths() { return []; }
       globalNight += stats.nightCount;
       globalTotal += stats.total;
 
-      const crewLabel = employee.crew === 'night' ? 'Noche' : 'Día';
+      const isNightCrew = employee.crew === 'night';
+      const crewLabel = isNightCrew ? 'Noche' : 'Día';
+      const crewIcon = isNightCrew ? 'dark_mode' : 'light_mode';
 
       return `
         <tr>
           <td class="border border-outline-variant/20 px-3 py-2 text-sm font-medium">${escapeHtml(employee.full_name)}</td>
-          <td class="border border-outline-variant/20 px-3 py-2 text-sm">${crewLabel}</td>
+          <td class="border border-outline-variant/20 px-3 py-2 text-sm">
+            <span class="inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-base leading-none">${crewIcon}</span>
+              ${crewLabel}
+            </span>
+          </td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${money(employee.day_rate)}</td>
           <td class="border border-outline-variant/20 px-3 py-2 text-right text-sm">${money(employee.night_rate)}</td>
           ${dayCells}
