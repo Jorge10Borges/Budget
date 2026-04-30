@@ -12,13 +12,36 @@ import NavBarMobil from '../components/NavBarMobil.astro';
     <header class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-extrabold text-on-surface">Proyectos</h1>
-        <p class="text-sm text-on-surface-variant">Listado de proyectos (datos ficticios)</p>
+        <p class="text-sm text-on-surface-variant">Listado de proyectos (datos reales)</p>
       </div>
       <div class="hidden sm:flex items-center gap-3">
         <input type="search" placeholder="Buscar proyecto..." class="px-3 py-2 rounded-md border border-outline-variant bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
         <a href="/projects/new" class="px-3 py-2 bg-primary text-on-primary rounded-md hover:cursor-pointer">Nuevo proyecto</a>
       </div>
     </header>
+
+    <section id="projects-summary" class="mb-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Proyectos</div>
+        <div id="kpi-project-count" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total presupuestado</div>
+        <div id="kpi-total-budget" class="mt-2 text-2xl font-extrabold text-on-surface">$0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total gastado</div>
+        <div id="kpi-total-spent" class="mt-2 text-2xl font-extrabold text-error">$0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total cobrado</div>
+        <div id="kpi-total-collected" class="mt-2 text-2xl font-extrabold text-primary">$0</div>
+      </article>
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
+        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total valuaciones</div>
+        <div id="kpi-total-valuations" class="mt-2 text-2xl font-extrabold text-on-surface">$0</div>
+      </article>
+    </section>
 
     <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     </div>
@@ -41,10 +64,32 @@ import NavBarMobil from '../components/NavBarMobil.astro';
       }
     }
 
+    function renderSummary(projects) {
+      const fmt = new Intl.NumberFormat(undefined);
+      const totalProjects = projects.length;
+      const totalBudget = projects.reduce((acc, p) => acc + Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0), 0);
+      const totalSpent = projects.reduce((acc, p) => acc + Number(p.spent ?? 0), 0);
+      const totalCollected = projects.reduce((acc, p) => acc + Number(p.valuations_collected ?? p.collected ?? 0), 0);
+      const totalValuations = projects.reduce((acc, p) => acc + Number(p.valuations_total ?? p.valuations_collected ?? p.collected ?? 0), 0);
+
+      const kpiProjectCount = document.getElementById('kpi-project-count');
+      const kpiTotalBudget = document.getElementById('kpi-total-budget');
+      const kpiTotalSpent = document.getElementById('kpi-total-spent');
+      const kpiTotalCollected = document.getElementById('kpi-total-collected');
+      const kpiTotalValuations = document.getElementById('kpi-total-valuations');
+
+      if (kpiProjectCount) kpiProjectCount.textContent = String(totalProjects);
+      if (kpiTotalBudget) kpiTotalBudget.textContent = `$${fmt.format(totalBudget)}`;
+      if (kpiTotalSpent) kpiTotalSpent.textContent = `$${fmt.format(totalSpent)}`;
+      if (kpiTotalCollected) kpiTotalCollected.textContent = `$${fmt.format(totalCollected)}`;
+      if (kpiTotalValuations) kpiTotalValuations.textContent = `$${fmt.format(totalValuations)}`;
+    }
+
     function renderProjects(projects) {
       const fmt = new Intl.NumberFormat(undefined);
       const container = document.getElementById('projects-grid');
       if (!container) return;
+      renderSummary(projects);
       container.innerHTML = projects.map(p => {
         const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
         const collected = Number(p.valuations_collected ?? p.collected ?? 0);
