@@ -47,7 +47,8 @@ try {
         if ($id) {
             // Return single project with calculated budget from project_items
             $sql = "SELECT p.*, COALESCE(t.calc_budget, 0) AS calculated_budget,
-                           COALESCE(e.total_spent, p.spent, 0) AS spent
+                           COALESCE(e.total_spent, p.spent, 0) AS spent,
+                           COALESCE(v.valuations_collected, 0) AS valuations_collected
                     FROM projects p
                     LEFT JOIN (
                         SELECT pi.project_id,
@@ -61,6 +62,12 @@ try {
                         FROM expenses
                         GROUP BY project_id
                     ) e ON e.project_id = p.id
+                    LEFT JOIN (
+                        SELECT project_id, SUM(amount) AS valuations_collected
+                        FROM valuations
+                        WHERE LOWER(status) IN ('cobrado', 'cobrada', 'pagado', 'pagada', 'collected', 'paid')
+                        GROUP BY project_id
+                    ) v ON v.project_id = p.id
                     WHERE p.id = ? LIMIT 1";
             $stmt = $mysqli->prepare($sql);
             $stmt->bind_param('i', $id);
@@ -76,6 +83,7 @@ try {
             // List projects with calculated budget
             $sql = "SELECT p.id, p.external_id, p.name, p.description, p.client, p.owner_user_id, p.status,
                            COALESCE(t.calc_budget, 0) AS calculated_budget, COALESCE(e.total_spent, p.spent, 0) AS spent,
+                           COALESCE(v.valuations_collected, 0) AS valuations_collected,
                            p.currency, p.start_date, p.end_date, p.is_active, p.created_at, p.updated_at
                     FROM projects p
                     LEFT JOIN (
@@ -90,6 +98,12 @@ try {
                         FROM expenses
                         GROUP BY project_id
                     ) e ON e.project_id = p.id
+                    LEFT JOIN (
+                        SELECT project_id, SUM(amount) AS valuations_collected
+                        FROM valuations
+                        WHERE LOWER(status) IN ('cobrado', 'cobrada', 'pagado', 'pagada', 'collected', 'paid')
+                        GROUP BY project_id
+                    ) v ON v.project_id = p.id
                     WHERE p.deleted_at IS NULL
                     ORDER BY p.id DESC
                     LIMIT ? OFFSET ?";
