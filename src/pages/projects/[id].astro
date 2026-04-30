@@ -201,6 +201,13 @@ export async function getStaticPaths() {
                 <div class="h-3 bg-primary" style="width: ${collectedPct}%"></div>
               </div>
             </div>
+
+            <div class="mt-3">
+              <div id="spent-progress-label" class="text-xs text-on-surface-variant mb-1">Gastado · ${spentPct}%</div>
+              <div class="w-full h-3 rounded-md bg-surface-dim overflow-hidden">
+                <div id="spent-progress-bar" class="h-3 bg-error" style="width: ${spentPct}%"></div>
+              </div>
+            </div>
           </div>
         </section>
         <section class="mt-6">
@@ -366,12 +373,15 @@ export async function getStaticPaths() {
           const directAmount = Number(expenses.amount || 0);
           const payrollAmount = Number(expenses.payroll_amount || 0);
           const projectTotalAmount = Number(expenses.project_total_amount || expenses.amount || 0);
+          const spentOverBudgetPct = budget > 0 ? Math.min(100, Math.round((projectTotalAmount / budget) * 100)) : 0;
           document.getElementById('kpi-items-total').textContent = items.total ?? 0;
           document.getElementById('kpi-items-closed').textContent = 'Cerradas: ' + (items.closed !== null ? items.closed : '—');
           document.getElementById('kpi-expenses-total').textContent = formatMoney(projectTotalAmount, projectCurrency);
           document.getElementById('kpi-expenses-closed').textContent = 'Directos: ' + formatMoney(directAmount, projectCurrency) + ' · Nómina: ' + formatMoney(payrollAmount, projectCurrency);
           document.getElementById('kpi-vals-total').textContent = vals.total ?? 0;
           document.getElementById('kpi-vals-closed').textContent = 'Cerradas: ' + (vals.closed !== null ? vals.closed : '—');
+          document.getElementById('spent-progress-label').textContent = 'Gastado · ' + spentOverBudgetPct + '%';
+          document.getElementById('spent-progress-bar').style.width = spentOverBudgetPct + '%';
         } catch (e) {
           console.error('Failed to load KPIs', e);
         } finally {
