@@ -39,10 +39,81 @@ function get_project_status($mysqli, $projectId) {
     return $row ? (string)($row['status'] ?? '') : null;
 }
 
+function empty_to_null($value) {
+    if ($value === null) return null;
+    if (is_string($value) && trim($value) === '') return null;
+    return $value;
+}
+
+function table_exists($mysqli, $table) {
+    $dbRes = $mysqli->query('SELECT DATABASE()');
+    $dbRow = $dbRes ? $dbRes->fetch_row() : null;
+    $db = $dbRow ? (string)$dbRow[0] : '';
+    if ($db === '') return false;
+
+    $sql = "SELECT COUNT(*) AS cnt
+            FROM information_schema.tables
+            WHERE table_schema = ? AND table_name = ?";
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) return false;
+    $stmt->bind_param('ss', $db, $table);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (int)($row['cnt'] ?? 0) > 0;
+}
+
+function column_exists($mysqli, $table, $column) {
+    $dbRes = $mysqli->query('SELECT DATABASE()');
+    $dbRow = $dbRes ? $dbRes->fetch_row() : null;
+    $db = $dbRow ? (string)$dbRow[0] : '';
+    if ($db === '') return false;
+
+    $sql = "SELECT COUNT(*) AS cnt
+            FROM information_schema.columns
+            WHERE table_schema = ? AND table_name = ? AND column_name = ?";
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) return false;
+    $stmt->bind_param('sss', $db, $table, $column);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (int)($row['cnt'] ?? 0) > 0;
+}
+
+function payroll_join_sql($mysqli) {
+    if (!table_exists($mysqli, 'payroll_entries')) {
+        return "LEFT JOIN (SELECT 0 AS project_id, 0 AS total_payroll) pe ON pe.project_id = p.id";
+    }
+
+    if (column_exists($mysqli, 'payroll_entries', 'project_id')) {
+        return "LEFT JOIN (
+                    SELECT pe.project_id, SUM(COALESCE(pe.paid_amount, 0)) AS total_payroll
+                    FROM payroll_entries pe
+                    GROUP BY pe.project_id
+                ) pe ON pe.project_id = p.id";
+    }
+
+    if (table_exists($mysqli, 'employees') && column_exists($mysqli, 'employees', 'project_id')) {
+        return "LEFT JOIN (
+                    SELECT e.project_id, SUM(COALESCE(pe.paid_amount, 0)) AS total_payroll
+                    FROM payroll_entries pe
+                    INNER JOIN employees e ON e.id = pe.employee_id
+                    GROUP BY e.project_id
+                ) pe ON pe.project_id = p.id";
+    }
+
+    return "LEFT JOIN (SELECT 0 AS project_id, 0 AS total_payroll) pe ON pe.project_id = p.id";
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
 try {
+    $payrollJoinSql = payroll_join_sql($mysqli);
+
     if ($method === 'GET') {
         if ($id) {
             // Return single project with calculated budget from project_items
@@ -63,12 +134,7 @@ try {
                         FROM expenses
                         GROUP BY project_id
                     ) e ON e.project_id = p.id
-                    LEFT JOIN (
-                        SELECT e.project_id, SUM(COALESCE(pe.paid_amount, 0)) AS total_payroll
-                        FROM payroll_entries pe
-                        INNER JOIN employees e ON e.id = pe.employee_id
-                        GROUP BY e.project_id
-                    ) pe ON pe.project_id = p.id
+                    {$payrollJoinSql}
                     LEFT JOIN (
                         SELECT project_id, SUM(amount) AS valuations_collected
                         FROM valuations
@@ -112,12 +178,7 @@ try {
                         FROM expenses
                         GROUP BY project_id
                     ) e ON e.project_id = p.id
-                    LEFT JOIN (
-                        SELECT e.project_id, SUM(COALESCE(pe.paid_amount, 0)) AS total_payroll
-                        FROM payroll_entries pe
-                        INNER JOIN employees e ON e.id = pe.employee_id
-                        GROUP BY e.project_id
-                    ) pe ON pe.project_id = p.id
+                    {$payrollJoinSql}
                     LEFT JOIN (
                         SELECT project_id, SUM(amount) AS valuations_collected
                         FROM valuations
@@ -158,9 +219,9 @@ try {
         $owner_user_id = isset($data['owner_user_id']) ? (int)$data['owner_user_id'] : null;
         $status = isset($data['status']) ? $data['status'] : 'draft';
         $currency = isset($data['currency']) ? $data['currency'] : 'USD';
-        $start_date = isset($data['start_date']) ? $data['start_date'] : null;
-        $end_date = isset($data['end_date']) ? $data['end_date'] : null;
-        $last_activity = isset($data['last_activity']) ? $data['last_activity'] : null;
+        $start_date = isset($data['start_date']) ? empty_to_null($data['start_date']) : null;
+        $end_date = isset($data['end_date']) ? empty_to_null($data['end_date']) : null;
+        $last_activity = isset($data['last_activity']) ? empty_to_null($data['last_activity']) : null;
         $collected = isset($data['collected']) ? (float)$data['collected'] : 0.00;
         $spent = isset($data['spent']) ? (float)$data['spent'] : 0.00;
         $metadata = isset($data['metadata']) ? $data['metadata'] : null;
@@ -210,7 +271,11 @@ try {
                 } elseif ($f === 'metadata' && is_array($data[$f])) {
                     $values[] = json_encode($data[$f]);
                 } else {
-                    $values[] = $data[$f];
+                    if (in_array($f, ['start_date', 'end_date', 'last_activity'], true)) {
+                        $values[] = empty_to_null($data[$f]);
+                    } else {
+                        $values[] = $data[$f];
+                    }
                 }
             }
         }

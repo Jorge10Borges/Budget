@@ -57,9 +57,16 @@ export async function getStaticPaths() { return []; }
           <h3 class="text-lg font-semibold text-on-surface">Administración de empleados</h3>
           <p class="text-sm text-on-surface-variant">Crea, edita o desactiva empleados desde acciones rápidas.</p>
         </div>
-        <button id="open-employee-modal" type="button" class="rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">
-          Agregar empleado
-        </button>
+        <div>
+          <button id="open-employee-modal" type="button" class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">
+            <span class="material-symbols-outlined text-[18px] leading-none">person_add</span>
+            Agregar empleado
+          </button>
+          <button id="open-import-employee-modal" type="button" class="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">
+            <span class="material-symbols-outlined text-[18px] leading-none">upload_file</span>
+            Importar empleado
+          </button>
+        </div>
       </div>
     </section>
 
@@ -158,6 +165,36 @@ export async function getStaticPaths() { return []; }
         </div>
       </div>
     </div>
+
+    <div id="import-employee-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+      <div class="fixed inset-0 bg-black/40" data-dismiss="import-employee-modal"></div>
+      <div class="z-10 w-full max-w-3xl mx-4 rounded-2xl border border-outline-variant/20 bg-surface p-5 shadow-xl">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-lg font-semibold text-on-surface">Importar empleados</h3>
+          <button id="import-employee-modal-close" type="button" class="rounded-lg border border-outline-variant px-2 py-1 text-sm text-on-surface cursor-pointer">Cerrar</button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="md:col-span-2">
+            <label for="import-employees-search" class="text-xs uppercase tracking-wide text-on-surface-variant">Buscar empleado global</label>
+            <input id="import-employees-search" placeholder="Buscar por nombre o cédula" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface" />
+          </div>
+          <div class="md:col-span-2">
+            <p class="text-xs text-on-surface-variant">Selecciona uno o varios empleados de la tabla global para agregarlos al proyecto actual.</p>
+          </div>
+          <div class="md:col-span-2">
+            <div id="import-employees-list" class="max-h-72 overflow-auto rounded-lg border border-outline-variant/20 p-2">
+              <p class="text-sm text-on-surface-variant px-2 py-1">Cargando empleados globales...</p>
+            </div>
+          </div>
+          <p id="import-employee-error" class="hidden md:col-span-2 text-sm text-error"></p>
+          <div class="md:col-span-2 flex justify-end gap-2 mt-1">
+            <button id="import-employee-cancel" type="button" class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar</button>
+            <button id="import-employee-submit" type="button" class="rounded-lg bg-primary px-4 py-2 text-on-primary cursor-pointer">Importar seleccionados</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <NavBarMobil />
@@ -171,6 +208,7 @@ export async function getStaticPaths() { return []; }
   const nextWeekBtn = document.getElementById('next-week');
 
   const openEmployeeModalBtn = document.getElementById('open-employee-modal');
+  const openImportEmployeeModalBtn = document.getElementById('open-import-employee-modal');
   const employeeModal = document.getElementById('employee-modal');
   const employeeModalTitle = document.getElementById('employee-modal-title');
   const employeeModalForm = document.getElementById('employee-modal-form');
@@ -196,6 +234,14 @@ export async function getStaticPaths() { return []; }
   const employeeDeleteCancelBtn = document.getElementById('employee-delete-cancel');
   const employeeDeleteConfirmBtn = document.getElementById('employee-delete-confirm');
 
+  const importEmployeeModal = document.getElementById('import-employee-modal');
+  const importEmployeeModalCloseBtn = document.getElementById('import-employee-modal-close');
+  const importEmployeeCancelBtn = document.getElementById('import-employee-cancel');
+  const importEmployeeSubmitBtn = document.getElementById('import-employee-submit');
+  const importEmployeesSearchInput = document.getElementById('import-employees-search');
+  const importEmployeesList = document.getElementById('import-employees-list');
+  const importEmployeeError = document.getElementById('import-employee-error');
+
   const payrollHead = document.getElementById('payroll-head');
   const payrollBody = document.getElementById('payroll-body');
 
@@ -211,6 +257,8 @@ export async function getStaticPaths() { return []; }
   let employees = [];
   let attendanceMap = new Map();
   let employeeDeleteTargetId = 0;
+  let sourceEmployees = [];
+  let importSearchTimer = null;
 
   function dateValue(date) {
     const y = date.getFullYear();
@@ -277,6 +325,12 @@ export async function getStaticPaths() { return []; }
     employeeModalError.classList.toggle('hidden', message === '');
   }
 
+  function showImportEmployeeError(message = '') {
+    if (!importEmployeeError) return;
+    importEmployeeError.textContent = message;
+    importEmployeeError.classList.toggle('hidden', message === '');
+  }
+
   function findEmployeeById(employeeId) {
     return employees.find((employee) => String(employee.id) === String(employeeId)) || null;
   }
@@ -327,6 +381,168 @@ export async function getStaticPaths() { return []; }
     employeeDeleteModal.classList.add('hidden');
     employeeDeleteModal.classList.remove('flex');
     employeeDeleteTargetId = 0;
+  }
+
+  function closeImportEmployeeModal() {
+    if (!importEmployeeModal) return;
+    importEmployeeModal.classList.add('hidden');
+    importEmployeeModal.classList.remove('flex');
+  }
+
+  function renderSourceEmployees() {
+    if (!importEmployeesList) return;
+
+    if (!sourceEmployees.length) {
+      importEmployeesList.innerHTML = '<p class="text-sm text-on-surface-variant px-2 py-1">No hay empleados globales para mostrar.</p>';
+      return;
+    }
+
+    const rows = sourceEmployees.map((employee) => {
+      const isNightCrew = String(employee?.crew || '').toLowerCase() === 'night';
+      const crewIcon = isNightCrew ? 'dark_mode' : 'light_mode';
+      const crewLabel = isNightCrew ? 'Noche' : 'Día';
+      const alreadyLinked = Number(employee?.linked_to_project || 0) === 1;
+      return `
+        <label class="flex items-start gap-3 rounded-lg px-2 py-2 ${alreadyLinked ? 'opacity-60 cursor-not-allowed' : 'hover:bg-surface-container-high cursor-pointer'}">
+          <input type="checkbox" data-import-employee-id="${employee.id}" class="mt-1" ${alreadyLinked ? 'disabled' : ''} />
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-on-surface">${escapeHtml(employee.full_name || '')}</div>
+            <div class="text-xs text-on-surface-variant flex items-center gap-2 flex-wrap">
+              <span class="inline-flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm leading-none">${crewIcon}</span>
+                ${crewLabel}
+              </span>
+              <span>Día: ${money(employee.day_rate)}</span>
+              <span>Noche: ${money(employee.night_rate)}</span>
+              <span>Cédula: ${escapeHtml(employee.id_number || '—')}</span>
+              <span>${alreadyLinked ? 'Ya en este proyecto' : 'Disponible'}</span>
+            </div>
+          </div>
+        </label>
+      `;
+    }).join('');
+
+    importEmployeesList.innerHTML = rows;
+  }
+
+  async function loadGlobalEmployeesForImport(searchTerm = '') {
+    if (!importEmployeesList) return;
+    sourceEmployees = [];
+    importEmployeesList.innerHTML = '<p class="text-sm text-on-surface-variant px-2 py-1">Cargando empleados globales...</p>';
+
+    const params = new URLSearchParams({
+      scope: 'global',
+      project_id: String(projectId),
+      q: String(searchTerm || ''),
+    });
+    const res = await fetch(`${apiBase}/payroll_employees.php?${params.toString()}`, { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error('No se pudo cargar la tabla global de empleados');
+    }
+
+    const data = await res.json();
+    sourceEmployees = Array.isArray(data?.data) ? data.data : [];
+    renderSourceEmployees();
+  }
+
+  async function openImportEmployeeModal() {
+    if (!importEmployeeModal) return;
+    showImportEmployeeError('');
+
+    if (importEmployeesSearchInput) {
+      importEmployeesSearchInput.value = '';
+    }
+    sourceEmployees = [];
+    if (importEmployeesList) {
+      importEmployeesList.innerHTML = '<p class="text-sm text-on-surface-variant px-2 py-1">Cargando empleados globales...</p>';
+    }
+
+    try {
+      await loadGlobalEmployeesForImport('');
+    } catch (error) {
+      showImportEmployeeError(error instanceof Error ? error.message : 'No se pudo cargar la tabla global de empleados');
+    }
+
+    importEmployeeModal.classList.remove('hidden');
+    importEmployeeModal.classList.add('flex');
+  }
+
+  async function importSelectedEmployees() {
+    showImportEmployeeError('');
+
+    const selectedIds = Array.from(importEmployeesList?.querySelectorAll('input[data-import-employee-id]:checked') || [])
+      .map((input) => Number(input.getAttribute('data-import-employee-id') || 0))
+      .filter((id) => id > 0);
+
+    if (!selectedIds.length) {
+      showImportEmployeeError('Selecciona al menos un empleado para importar.');
+      return;
+    }
+
+    const selectedEmployees = sourceEmployees.filter((employee) => selectedIds.includes(Number(employee?.id || 0)));
+    if (!selectedEmployees.length) {
+      showImportEmployeeError('No se pudo resolver la selección de empleados.');
+      return;
+    }
+
+    const originalText = importEmployeeSubmitBtn?.textContent || 'Importar seleccionados';
+    if (importEmployeeSubmitBtn) {
+      importEmployeeSubmitBtn.disabled = true;
+      importEmployeeSubmitBtn.textContent = 'Importando...';
+    }
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    try {
+      for (const employee of selectedEmployees) {
+        if (Number(employee?.linked_to_project || 0) === 1) {
+          skippedCount += 1;
+          continue;
+        }
+
+        const payload = {
+          project_id: projectId,
+          employee_id: Number(employee?.id || 0),
+        };
+
+        const res = await fetch(`${apiBase}/payroll_employees.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          failedCount += 1;
+          console.error('Importación fallida', data);
+          continue;
+        }
+
+        importedCount += 1;
+      }
+
+      await loadEmployees();
+      renderTable();
+      await loadGlobalEmployeesForImport(String(importEmployeesSearchInput?.value || '').trim());
+
+      if (failedCount > 0) {
+        showImportEmployeeError(`Importados: ${importedCount}. Omitidos: ${skippedCount}. Fallidos: ${failedCount}.`);
+        return;
+      }
+
+      closeImportEmployeeModal();
+      if (skippedCount > 0) {
+        alert(`Importados: ${importedCount}. Omitidos por duplicado: ${skippedCount}.`);
+      }
+    } catch (error) {
+      showImportEmployeeError(error instanceof Error ? error.message : 'No se pudieron importar los empleados');
+    } finally {
+      if (importEmployeeSubmitBtn) {
+        importEmployeeSubmitBtn.disabled = false;
+        importEmployeeSubmitBtn.textContent = originalText;
+      }
+    }
   }
 
   async function loadProjectName() {
@@ -681,8 +897,35 @@ export async function getStaticPaths() { return []; }
     openEmployeeModal(null);
   });
 
+  openImportEmployeeModalBtn?.addEventListener('click', async () => {
+    await openImportEmployeeModal();
+  });
+
   employeeModalCloseBtn?.addEventListener('click', closeEmployeeModal);
   employeeModalCancelBtn?.addEventListener('click', closeEmployeeModal);
+  importEmployeeModalCloseBtn?.addEventListener('click', closeImportEmployeeModal);
+  importEmployeeCancelBtn?.addEventListener('click', closeImportEmployeeModal);
+  importEmployeeSubmitBtn?.addEventListener('click', async () => {
+    await importSelectedEmployees();
+  });
+
+  importEmployeesSearchInput?.addEventListener('input', () => {
+    showImportEmployeeError('');
+    if (importSearchTimer) {
+      clearTimeout(importSearchTimer);
+    }
+    importSearchTimer = setTimeout(async () => {
+      try {
+        await loadGlobalEmployeesForImport(String(importEmployeesSearchInput?.value || '').trim());
+      } catch (error) {
+        sourceEmployees = [];
+        if (importEmployeesList) {
+          importEmployeesList.innerHTML = '<p class="text-sm text-error px-2 py-1">No se pudo cargar la tabla global de empleados.</p>';
+        }
+        showImportEmployeeError(error instanceof Error ? error.message : 'No se pudo cargar la tabla global de empleados');
+      }
+    }, 250);
+  });
 
   employeeDeleteCancelBtn?.addEventListener('click', closeEmployeeDeleteModal);
 
@@ -694,7 +937,7 @@ export async function getStaticPaths() { return []; }
     employeeDeleteConfirmBtn.textContent = 'Eliminando...';
 
     try {
-      const res = await fetch(`${apiBase}/payroll_employees.php?id=${encodeURIComponent(String(employeeDeleteTargetId))}`, {
+      const res = await fetch(`${apiBase}/payroll_employees.php?id=${encodeURIComponent(String(employeeDeleteTargetId))}&project_id=${encodeURIComponent(String(projectId))}`, {
         method: 'DELETE',
       });
       const data = await res.json().catch(() => ({}));
@@ -723,6 +966,9 @@ export async function getStaticPaths() { return []; }
     }
     if (dismissType === 'employee-delete-modal') {
       closeEmployeeDeleteModal();
+    }
+    if (dismissType === 'import-employee-modal') {
+      closeImportEmployeeModal();
     }
   });
 

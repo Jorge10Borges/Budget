@@ -80,14 +80,13 @@ function sum_expenses_amount($mysqli, $project_id) {
 }
 
 function sum_payroll_amount($mysqli, $project_id) {
-    if (!table_exists($mysqli, 'payroll_entries') || !table_exists($mysqli, 'employees')) {
+    if (!table_exists($mysqli, 'payroll_entries')) {
         return 0.0;
     }
 
-        $sql = 'SELECT COALESCE(SUM(COALESCE(pe.paid_amount, 0)), 0) AS total
+    $sql = 'SELECT COALESCE(SUM(COALESCE(pe.paid_amount, 0)), 0) AS total
             FROM payroll_entries pe
-            INNER JOIN employees e ON e.id = pe.employee_id
-            WHERE e.project_id = ?';
+            WHERE pe.project_id = ?';
 
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('i', $project_id);

@@ -22,6 +22,70 @@ try {
     $method = $_SERVER['REQUEST_METHOD'];
 
     if ($method === 'GET') {
+        $scope = isset($_GET['scope']) ? strtolower(trim((string)$_GET['scope'])) : '';
+        if ($scope === 'global') {
+            $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+            $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
+            $like = '%' . $q . '%';
+
+            if ($project_id > 0 && $q !== '') {
+                $sql = 'SELECT e.id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone,
+                               e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id,
+                               e.crew, e.day_rate, e.night_rate, e.created_at, e.updated_at,
+                               CASE WHEN pe.employee_id IS NULL THEN 0 ELSE 1 END AS linked_to_project
+                        FROM employees e
+                        LEFT JOIN project_employees pe ON pe.employee_id = e.id AND pe.project_id = ?
+                        WHERE (e.full_name LIKE ? OR e.id_number LIKE ?)
+                        ORDER BY e.full_name ASC
+                        LIMIT 500';
+                $stmt = $mysqli->prepare($sql);
+                $stmt->bind_param('iss', $project_id, $like, $like);
+            } elseif ($project_id > 0) {
+                $sql = 'SELECT e.id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone,
+                               e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id,
+                               e.crew, e.day_rate, e.night_rate, e.created_at, e.updated_at,
+                               CASE WHEN pe.employee_id IS NULL THEN 0 ELSE 1 END AS linked_to_project
+                        FROM employees e
+                        LEFT JOIN project_employees pe ON pe.employee_id = e.id AND pe.project_id = ?
+                        ORDER BY e.full_name ASC
+                        LIMIT 500';
+                $stmt = $mysqli->prepare($sql);
+                $stmt->bind_param('i', $project_id);
+            } elseif ($q !== '') {
+                $sql = 'SELECT e.id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone,
+                               e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id,
+                               e.crew, e.day_rate, e.night_rate, e.created_at, e.updated_at,
+                               0 AS linked_to_project
+                        FROM employees e
+                        WHERE (e.full_name LIKE ? OR e.id_number LIKE ?)
+                        ORDER BY e.full_name ASC
+                        LIMIT 500';
+                $stmt = $mysqli->prepare($sql);
+                $stmt->bind_param('ss', $like, $like);
+            } else {
+                $sql = 'SELECT e.id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone,
+                               e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id,
+                               e.crew, e.day_rate, e.night_rate, e.created_at, e.updated_at,
+                               0 AS linked_to_project
+                        FROM employees e
+                        ORDER BY e.full_name ASC
+                        LIMIT 500';
+                $stmt = $mysqli->prepare($sql);
+            }
+
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $rows = [];
+            while ($r = $res->fetch_assoc()) {
+                $r['linked_to_project'] = (int)($r['linked_to_project'] ?? 0);
+                $rows[] = $r;
+            }
+            $stmt->close();
+
+            echo json_encode(['data' => $rows]);
+            exit;
+        }
+
         $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
         if ($project_id <= 0) {
             http_response_code(400);
@@ -33,10 +97,14 @@ try {
         $include_inactive = isset($_GET['include_inactive']) && (string)$_GET['include_inactive'] === '1';
 
         if ($id > 0) {
-                $sql = 'SELECT id, project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active, created_at, updated_at
-                    FROM employees
-                    WHERE id = ? AND project_id = ?
-                    LIMIT 1';
+            $sql = 'SELECT e.id, pe.project_id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone,
+                   e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id,
+                   e.crew, e.day_rate, e.night_rate, pe.is_active,
+                   e.created_at, e.updated_at
+                FROM employees e
+                INNER JOIN project_employees pe ON pe.employee_id = e.id
+                WHERE e.id = ? AND pe.project_id = ?
+                LIMIT 1';
             $stmt = $mysqli->prepare($sql);
             $stmt->bind_param('ii', $id, $project_id);
             $stmt->execute();
@@ -53,13 +121,17 @@ try {
             exit;
         }
 
-        $sql = 'SELECT id, project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active, created_at, updated_at
-                FROM employees
-                WHERE project_id = ?';
+        $sql = 'SELECT e.id, pe.project_id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone,
+                       e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id,
+                       e.crew, e.day_rate, e.night_rate, pe.is_active,
+                       e.created_at, e.updated_at
+                FROM project_employees pe
+                INNER JOIN employees e ON e.id = pe.employee_id
+                WHERE pe.project_id = ?';
         if (!$include_inactive) {
-            $sql .= ' AND is_active = 1';
+            $sql .= ' AND pe.is_active = 1';
         }
-        $sql .= ' ORDER BY full_name ASC';
+        $sql .= ' ORDER BY e.full_name ASC';
 
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param('i', $project_id);
@@ -84,6 +156,41 @@ try {
         }
 
         $project_id = isset($body['project_id']) ? (int)$body['project_id'] : 0;
+        $employee_id = isset($body['employee_id']) ? (int)$body['employee_id'] : 0;
+
+        if ($employee_id > 0) {
+            if ($project_id <= 0) {
+                http_response_code(400);
+                echo json_encode(['error' => 'project_id is required']);
+                exit;
+            }
+
+            $selEmp = $mysqli->prepare('SELECT id FROM employees WHERE id = ? LIMIT 1');
+            $selEmp->bind_param('i', $employee_id);
+            $selEmp->execute();
+            $existingEmp = $selEmp->get_result()->fetch_assoc();
+            $selEmp->close();
+
+            if (!$existingEmp) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Employee not found']);
+                exit;
+            }
+
+            $upsertRelation = $mysqli->prepare('INSERT INTO project_employees (project_id, employee_id, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active = 1, updated_at = CURRENT_TIMESTAMP');
+            $upsertRelation->bind_param('ii', $project_id, $employee_id);
+            if (!$upsertRelation->execute()) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Upsert relation failed', 'message' => $upsertRelation->error]);
+                exit;
+            }
+            $upsertRelation->close();
+
+            http_response_code(201);
+            echo json_encode(['data' => ['id' => $employee_id, 'project_id' => $project_id, 'relation_created' => true]]);
+            exit;
+        }
+
         $full_name = isset($body['full_name']) ? trim((string)$body['full_name']) : '';
         $id_number = isset($body['id_number']) ? trim((string)$body['id_number']) : '';
         $mobile_bank = isset($body['mobile_bank']) ? trim((string)$body['mobile_bank']) : '';
@@ -117,19 +224,44 @@ try {
             exit;
         }
 
-        $stmt = $mysqli->prepare('INSERT INTO employees (project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)');
-        $stmt->bind_param('isssssssssdd', $project_id, $full_name, $id_number, $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate);
-        if (!$stmt->execute()) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Insert failed', 'message' => $stmt->error]);
-            exit;
+        $mysqli->begin_transaction();
+
+        // Reusar empleado existente por regla de unicidad (full_name + id_number).
+        $selExisting = $mysqli->prepare('SELECT id FROM employees WHERE full_name = ? AND ((id_number IS NULL AND ? = \'\') OR id_number = ?) LIMIT 1');
+        $selExisting->bind_param('sss', $full_name, $id_number, $id_number);
+        $selExisting->execute();
+        $existing = $selExisting->get_result()->fetch_assoc();
+        $selExisting->close();
+
+        if ($existing) {
+            $employee_id = (int)$existing['id'];
+            $updEmp = $mysqli->prepare('UPDATE employees SET mobile_bank = ?, mobile_id_number = ?, mobile_phone = ?, bank_account_number = ?, bank_account_holder_name = ?, bank_account_holder_id = ?, crew = ?, day_rate = ?, night_rate = ? WHERE id = ? LIMIT 1');
+            $updEmp->bind_param('sssssssddi', $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate, $employee_id);
+            if (!$updEmp->execute()) {
+                throw new Exception('Update employee failed: ' . $updEmp->error);
+            }
+            $updEmp->close();
+        } else {
+            $insEmp = $mysqli->prepare('INSERT INTO employees (full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $insEmp->bind_param('sssssssssdd', $full_name, $id_number, $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate);
+            if (!$insEmp->execute()) {
+                throw new Exception('Insert employee failed: ' . $insEmp->error);
+            }
+            $employee_id = (int)$insEmp->insert_id;
+            $insEmp->close();
         }
 
-        $newId = (int)$stmt->insert_id;
-        $stmt->close();
+        $upsertRelation = $mysqli->prepare('INSERT INTO project_employees (project_id, employee_id, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active = 1, updated_at = CURRENT_TIMESTAMP');
+        $upsertRelation->bind_param('ii', $project_id, $employee_id);
+        if (!$upsertRelation->execute()) {
+            throw new Exception('Upsert relation failed: ' . $upsertRelation->error);
+        }
+        $upsertRelation->close();
+
+        $mysqli->commit();
 
         http_response_code(201);
-        echo json_encode(['data' => ['id' => $newId, 'project_id' => $project_id]]);
+        echo json_encode(['data' => ['id' => $employee_id, 'project_id' => $project_id]]);
         exit;
     }
 
@@ -148,8 +280,15 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT id, project_id, full_name, id_number, mobile_bank, mobile_id_number, mobile_phone, bank_account_number, bank_account_holder_name, bank_account_holder_id, crew, day_rate, night_rate, is_active FROM employees WHERE id = ? LIMIT 1');
-        $sel->bind_param('i', $id);
+        $project_id = isset($body['project_id']) ? (int)$body['project_id'] : (isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0);
+        if ($project_id <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'project_id is required']);
+            exit;
+        }
+
+        $sel = $mysqli->prepare('SELECT e.id, pe.project_id, e.full_name, e.id_number, e.mobile_bank, e.mobile_id_number, e.mobile_phone, e.bank_account_number, e.bank_account_holder_name, e.bank_account_holder_id, e.crew, e.day_rate, e.night_rate, pe.is_active FROM employees e INNER JOIN project_employees pe ON pe.employee_id = e.id WHERE e.id = ? AND pe.project_id = ? LIMIT 1');
+        $sel->bind_param('ii', $id, $project_id);
         $sel->execute();
         $row = $sel->get_result()->fetch_assoc();
         $sel->close();
@@ -189,16 +328,25 @@ try {
             exit;
         }
 
-        $upd = $mysqli->prepare('UPDATE employees SET full_name = ?, id_number = ?, mobile_bank = ?, mobile_id_number = ?, mobile_phone = ?, bank_account_number = ?, bank_account_holder_name = ?, bank_account_holder_id = ?, crew = ?, day_rate = ?, night_rate = ?, is_active = ? WHERE id = ? LIMIT 1');
-        $upd->bind_param('sssssssssddii', $full_name, $id_number, $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate, $is_active, $id);
+        $mysqli->begin_transaction();
+
+        $upd = $mysqli->prepare('UPDATE employees SET full_name = ?, id_number = ?, mobile_bank = ?, mobile_id_number = ?, mobile_phone = ?, bank_account_number = ?, bank_account_holder_name = ?, bank_account_holder_id = ?, crew = ?, day_rate = ?, night_rate = ? WHERE id = ? LIMIT 1');
+        $upd->bind_param('sssssssssddi', $full_name, $id_number, $mobile_bank, $mobile_id_number, $mobile_phone, $bank_account_number, $bank_account_holder_name, $bank_account_holder_id, $crew, $day_rate, $night_rate, $id);
         if (!$upd->execute()) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Update failed', 'message' => $upd->error]);
-            exit;
+            throw new Exception('Update employee failed: ' . $upd->error);
         }
         $upd->close();
 
-        echo json_encode(['data' => ['id' => $id, 'project_id' => (int)$row['project_id']]]);
+        $updRel = $mysqli->prepare('UPDATE project_employees SET is_active = ? WHERE project_id = ? AND employee_id = ? LIMIT 1');
+        $updRel->bind_param('iii', $is_active, $project_id, $id);
+        if (!$updRel->execute()) {
+            throw new Exception('Update relation failed: ' . $updRel->error);
+        }
+        $updRel->close();
+
+        $mysqli->commit();
+
+        echo json_encode(['data' => ['id' => $id, 'project_id' => $project_id]]);
         exit;
     }
 
@@ -210,8 +358,15 @@ try {
             exit;
         }
 
-        $upd = $mysqli->prepare('UPDATE employees SET is_active = 0 WHERE id = ? LIMIT 1');
-        $upd->bind_param('i', $id);
+        $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        if ($project_id <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'project_id is required']);
+            exit;
+        }
+
+        $upd = $mysqli->prepare('UPDATE project_employees SET is_active = 0 WHERE project_id = ? AND employee_id = ? LIMIT 1');
+        $upd->bind_param('ii', $project_id, $id);
         if (!$upd->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Delete failed', 'message' => $upd->error]);
@@ -226,6 +381,7 @@ try {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
 } catch (Exception $e) {
+    $mysqli->rollback();
     http_response_code(500);
     echo json_encode(['error' => 'Server error', 'message' => $e->getMessage()]);
 }
