@@ -419,7 +419,22 @@ export async function getStaticPaths() { return []; }
         return `<span class="inline-block px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">${label}</span>`;
       };
 
-      const rows = items.map(v => {
+      const sortedItems = [...(items || [])].sort((a, b) => {
+        const aDateRaw = a?.date || a?.created_at || '';
+        const bDateRaw = b?.date || b?.created_at || '';
+        const aDate = new Date(String(aDateRaw).replace(' ', 'T'));
+        const bDate = new Date(String(bDateRaw).replace(' ', 'T'));
+        const aTime = Number.isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+        const bTime = Number.isNaN(bDate.getTime()) ? 0 : bDate.getTime();
+
+        if (aTime !== bTime) return aTime - bTime;
+
+        const aId = Number(a?.id || 0);
+        const bId = Number(b?.id || 0);
+        return aId - bId;
+      });
+
+      const rows = sortedItems.map((v, idx) => {
         const id = v.id || '';
         const pid = projectNameEl?.dataset.projectId || '';
         const editHref = `/projects/${encodeURIComponent(pid)}/valuations/${encodeURIComponent(String(id))}/edit`;
@@ -438,7 +453,7 @@ export async function getStaticPaths() { return []; }
 
         return `
           <tr class="bg-surface-container-low border-b border-outline-variant/10 hover:bg-surface-dim">
-            <td class="px-3 py-3 text-sm font-mono text-on-surface-variant">#${id}</td>
+            <td class="px-3 py-3 text-sm font-mono text-on-surface-variant">${idx + 1}</td>
             <td class="px-3 py-3 text-sm">${escapeHtml(date)}</td>
             <td class="px-3 py-3 text-sm">${escapeHtml(valuator)}</td>
             <td class="px-3 py-3 text-sm text-right font-medium">${fmtCurrency(amount, currency)}</td>
@@ -468,7 +483,7 @@ export async function getStaticPaths() { return []; }
           <table class="w-full table-auto text-left">
             <thead>
               <tr class="text-xs text-on-surface-variant border border-outline-variant">
-                <th class="px-3 py-2">ID</th>
+                <th class="px-3 py-2">Item</th>
                 <th class="px-3 py-2">Fecha</th>
                 <th class="px-3 py-2">Valuador</th>
                 <th class="px-3 py-2 text-right">Monto</th>

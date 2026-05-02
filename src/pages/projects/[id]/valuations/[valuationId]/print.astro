@@ -311,7 +311,7 @@ import "../../../../../styles/global.css";
 
         return `
           <tr>
-            <td class="print-center">${index + 1}</td>
+            <td class="print-center text-center">${index + 1}</td>
             <td>${item.item_name || item.name || `Partida ${index + 1}`}</td>
             <td class="print-center text-center">${item.unit || ''}</td>
             <td class="print-center text-center">${qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
