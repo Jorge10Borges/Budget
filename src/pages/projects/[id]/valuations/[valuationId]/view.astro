@@ -1,0 +1,260 @@
+---
+import MainLayout from '../../../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const params = (Astro.params as Record<string, string> | undefined) ?? {};
+const projectId = params.id ?? null;
+const valuationId = params.valuationId ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}/valuations`} class="text-sm text-primary cursor-pointer">← Volver a valuaciones</a>
+
+    <div class="mt-4 bg-surface p-6 rounded-xl shadow-sm border border-outline-variant/10">
+      <div class="flex items-center justify-between mb-4 gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Vista de valuación</h1>
+          <p class="text-sm text-on-surface-variant">Visualiza la valuación #{valuationId} con el formato de impresión.</p>
+        </div>
+        <div>
+          <a href={`/projects/${projectId}/valuations/${valuationId}/print`} target="_blank" class="px-3 py-2 bg-primary text-on-primary rounded cursor-pointer flex items-center gap-2"><span class="material-symbols-outlined">picture_as_pdf</span>Imprimir</a>
+        </div>
+      </div>
+      <section id="print-sheet" class="bg-white dark:bg-surface rounded shadow p-6">
+        <!-- Aquí se renderiza el formato de impresión de la valuación -->
+        <div class="print-top-row flex justify-between items-center mb-4">
+          <div>
+            <div class="print-project-title text-xl font-bold">Proyecto <span id="print-project-name">—</span></div>
+            <div class="print-project-subtitle text-base font-semibold">Valuación #{valuationId}</div>
+            <div class="print-project-description text-sm text-on-surface-variant">Detalle de la valuación y sus partidas.</div>
+          </div>
+          <div class="print-brand flex flex-col items-end">
+            <div class="print-logo-wrap" aria-hidden="true">
+              <img src="/logo.svg" alt="DevJorge" class="print-logo w-16 h-16" loading="eager" decoding="async" />
+            </div>
+            <div class="print-company-name font-semibold mt-2">Jorge Borges</div>
+          </div>
+        </div>
+        <div class="print-line mb-2"><strong>FECHA:</strong> <span id="print-date">—</span></div>
+        <div class="print-line mb-2"><strong>VALUADOR:</strong> <span id="print-valuator">—</span></div>
+        <div class="print-line mb-2"><strong>ESTADO:</strong> <span id="print-status">—</span></div>
+        <div class="print-line mb-2"><strong>DESCRIPCIÓN:</strong> <span id="print-notes">—</span></div>
+        <div class="print-subtitle font-semibold mt-4 mb-2">PARTIDAS DE LA VALUACIÓN</div>
+        <table class="print-table w-full border border-outline-variant rounded">
+          <colgroup>
+            <col class="col-item" />
+            <col class="col-desc" />
+            <col class="col-unit" />
+            <col class="col-qty" />
+            <col class="col-unit-price" />
+            <col class="col-total" />
+          </colgroup>
+          <thead class="bg-surface-container-high">
+            <tr>
+              <th>Ítem</th>
+              <th>Descripción del Servicio</th>
+              <th>Unidad</th>
+              <th>Cantidad</th>
+              <th>Precio Unitario</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="print-items-body" class="valuation-items-body"></tbody>
+          <tfoot>
+            <tr class="print-total-row pt-4 border-t border-outline-variant">
+              <td colspan="4" class="print-total-label text-right font-semibold">TOTAL VALUACIÓN</td>
+              <td colspan="2" id="print-total-cell" class="text-right print-right font-semibold">0.00</td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+    </div>
+  </main>
+  <NavBarMobil />
+</MainLayout>
+
+<style>
+  .print-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+
+  .print-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.7rem 0.65rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  }
+
+  .print-table tbody td,
+  .print-table tfoot td {
+    padding: 0.65rem 0.65rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .valuation-items-body tr {
+    transition: background-color 180ms ease, transform 140ms ease;
+  }
+
+  .valuation-items-body tr:nth-child(odd) {
+    background-color: #fbfdff;
+  }
+
+  .valuation-items-body tr:nth-child(even) {
+    background-color: #f6f9fc;
+  }
+
+  .valuation-items-body tr:hover td {
+    background-color: rgba(37, 99, 235, 0.12);
+  }
+
+  .valuation-items-body tr:hover {
+    transform: translateY(-1px);
+  }
+
+  .print-total-row td {
+    background: #eef2f7;
+    border-top: 1px solid rgba(148, 163, 184, 0.4);
+    border-bottom: 0;
+  }
+</style>
+
+<script type="module">
+const _meta = document.querySelector('meta[name=\"api-base\"]');
+const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const projectIdFromPath = pathParts[1] || '';
+const valuationIdFromPath = pathParts[3] || '';
+const projectNameEl = document.getElementById('print-project-name');
+const dateEl = document.getElementById('print-date');
+const valuatorEl = document.getElementById('print-valuator');
+const statusEl = document.getElementById('print-status');
+const notesEl = document.getElementById('print-notes');
+const itemsBody = document.getElementById('print-items-body');
+const totalCell = document.getElementById('print-total-cell');
+
+async function fetchValuation() {
+  try {
+    if (!valuationIdFromPath) return null;
+    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/valuations.php?id=${encodeURIComponent(valuationIdFromPath)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.data && Array.isArray(data.data)) return data.data[0];
+    if (data && data.data && typeof data.data === 'object') return data.data;
+    if (Array.isArray(data)) return data[0];
+    if (data && typeof data === 'object') return data;
+    return null;
+  } catch (e) { return null; }
+}
+
+async function fetchProjectName(projectId) {
+  try {
+    if (!projectId) return null;
+    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(projectId)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const first = Array.isArray(data)
+      ? data[0]
+      : (Array.isArray(data?.data) ? data.data[0] : data?.data || data);
+    return first?.name || first?.project_name || first?.title || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function fetchValuationItems() {
+  try {
+    if (!valuationIdFromPath) return [];
+    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/valuation_items.php?valuation_id=${encodeURIComponent(valuationIdFromPath)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data && data.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+  } catch (e) { return []; }
+}
+
+function formatCurrency(value, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2
+    }).format(Number(value || 0));
+  } catch (e) {
+    return `${Number(value || 0).toFixed(2)} ${currency || ''}`;
+  }
+}
+
+function formatPrintDate(dateStr) {
+  if (!dateStr) return '—';
+  try {
+    const date = new Date(dateStr);
+    return new Intl.DateTimeFormat('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(date);
+  } catch (e) { return dateStr; }
+}
+
+async function renderValuation() {
+  const val = await fetchValuation();
+  if (!val) return;
+  const realProjectId = String(val.project_id || projectIdFromPath || '');
+  const projectName = await fetchProjectName(realProjectId);
+  if (projectNameEl) {
+    projectNameEl.textContent = projectName || val.project_name || val.project || `Proyecto #${realProjectId}`;
+  }
+  if (dateEl) dateEl.textContent = formatPrintDate(val.date);
+  if (valuatorEl) valuatorEl.textContent = val.valuator || '—';
+  if (statusEl) statusEl.textContent = val.status || '—';
+  if (notesEl) notesEl.textContent = val.notes || '—';
+
+  const items = await fetchValuationItems();
+  let grandTotal = 0;
+  if (Array.isArray(items) && items.length > 0) {
+    itemsBody.innerHTML = items.map((it, idx) => {
+      const description = it.item_name || it.name || `Partida ${idx + 1}`;
+      const qty = Number(it.qty || 0);
+      const unit = it.unit || '';
+      const unitCost = Number(it.unit_cost || 0);
+      const total = Number(it.total_cost || (qty * unitCost) || 0);
+      grandTotal += total;
+      return `
+        <tr class="valuation-item-row">
+          <td class=\"print-center\" style=\"text-align:center;\">${idx + 1}</td>
+          <td>${description}</td>
+          <td class=\"print-center\" style=\"text-align:center;\">${unit}</td>
+          <td class=\"print-center\" style=\"text-align:center;\">${qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class=\"print-center\" style=\"text-align:center;\">${unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class=\"print-right\" style=\"text-align:right;\">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    }).join('');
+  } else {
+    itemsBody.innerHTML = '<tr><td colspan="6">Sin partidas registradas.</td></tr>';
+  }
+  if (totalCell) totalCell.textContent = formatCurrency(grandTotal, val.currency);
+}
+
+renderValuation();
+</script>

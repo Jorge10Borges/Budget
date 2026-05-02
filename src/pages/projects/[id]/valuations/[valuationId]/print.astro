@@ -1,0 +1,331 @@
+---
+export const prerender = false;
+export async function getStaticPaths() { return []; }
+import "../../../../../styles/global.css";
+---
+
+<head>
+  <meta charset="utf-8" />
+</head>
+
+<main class="print-shell">
+  <section id="print-sheet">
+    <div class="print-top-row">
+      <div class="print-project-header">
+        <div class="print-project-title">Proyecto <span id="print-project-name">—</span></div>
+        <div id="print-title" class="print-project-subtitle">Valuaci&oacute;n</div>
+        <div class="print-project-description">Detalle de la valuaci&oacute;n y sus partidas.</div>
+      </div>
+      <div class="print-brand">
+        <div class="print-logo-wrap" aria-hidden="true">
+          <img src="/logo.svg" alt="DevJorge" class="print-logo" loading="eager" decoding="async" />
+        </div>
+        <div class="print-company-name">Jorge Borges</div>
+      </div>
+    </div>
+
+    <div class="print-line"><strong>FECHA:</strong> <span id="print-date">—</span></div>
+    <div class="print-line"><strong>VALUADOR:</strong> <span id="print-valuator">—</span></div>
+    <div class="print-line"><strong>ESTADO:</strong> <span id="print-status">—</span></div>
+    <div class="print-line"><strong>DESCRIPCI&Oacute;N:</strong> <span id="print-notes">—</span></div>
+
+    <div class="print-subtitle">DESCRIPCI&Oacute;N DE SERVICIOS (MANO DE OBRA)</div>
+
+    <table class="print-table">
+      <colgroup>
+        <col class="col-item" />
+        <col class="col-desc" />
+        <col class="col-unit" />
+        <col class="col-qty" />
+        <col class="col-unit-price" />
+        <col class="col-total" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>&Iacute;tem</th>
+          <th>Descripci&oacute;n del Servicio</th>
+          <th class="print-center">Unidad</th>
+          <th class="print-center">Cantidad</th>
+          <th class="print-center">Precio Unitario</th>
+          <th class="print-center">Total</th>
+        </tr>
+      </thead>
+      <tbody id="print-items-body"></tbody>
+      <tfoot>
+        <tr class="print-total-row">
+          <td colspan="5" class="print-total-label">TOTAL VALUACI&Oacute;N</td>
+          <td id="print-total-cell" class="print-right">0.00</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+</main>
+
+<style>
+  :global(body) {
+    margin: 0;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .print-shell {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  #print-sheet {
+    border: 1px solid #d8dee9;
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .print-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .print-project-title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: .2px;
+  }
+
+  .print-project-subtitle {
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+  }
+
+  .print-project-description {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .print-brand {
+    text-align: right;
+  }
+
+  .print-logo-wrap {
+    width: 72px;
+    height: 72px;
+    margin-left: auto;
+  }
+
+  .print-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .print-company-name {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .print-line {
+    margin-top: 8px;
+    font-size: 12px;
+  }
+
+  .print-subtitle {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .5px;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #d8dee9;
+    padding: 6px 8px;
+    vertical-align: middle;
+  }
+
+  .print-table th {
+    background: #f8fafc;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: .4px;
+  }
+
+  .print-center {
+    text-align: center;
+  }
+
+  /* Refuerzo de alineacion por columna para evitar overrides de estilos globales */
+  .print-table thead th:nth-child(3),
+  .print-table tbody td:nth-child(3) {
+    text-align: center !important;
+  }
+
+  .print-table thead th:nth-child(4),
+  .print-table tbody td:nth-child(4) {
+    text-align: center !important;
+  }
+
+  .print-table thead th:nth-child(5),
+  .print-table tbody td:nth-child(5),
+  .print-table thead th:nth-child(6),
+  .print-table tbody td:nth-child(6) {
+    text-align: right !important;
+  }
+
+  .print-right {
+    text-align: right;
+  }
+
+  .print-total-row td {
+    font-weight: 800;
+  }
+
+  .print-total-label {
+    text-align: right;
+  }
+
+  @media print {
+    .print-shell {
+      max-width: none;
+      padding: 0;
+    }
+
+    #print-sheet {
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+    }
+  }
+</style>
+
+<script type="module">
+  const meta = document.querySelector('meta[name="api-base"]');
+  const apiBase = meta ? meta.content : 'http://localhost/Budget/api';
+  const base = apiBase.replace(/\/$/, '');
+
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const projectId = pathParts[1] || '';
+  const valuationId = pathParts[3] || '';
+
+  const projectNameEl = document.getElementById('print-project-name');
+  const titleEl = document.getElementById('print-title');
+  const dateEl = document.getElementById('print-date');
+  const valuatorEl = document.getElementById('print-valuator');
+  const statusEl = document.getElementById('print-status');
+  const notesEl = document.getElementById('print-notes');
+  const itemsBody = document.getElementById('print-items-body');
+  const totalCell = document.getElementById('print-total-cell');
+
+  function formatNumber(value) {
+    return Number(value || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    try {
+      return new Intl.DateTimeFormat('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }).format(new Date(dateStr));
+    } catch (e) {
+      return String(dateStr);
+    }
+  }
+
+  async function fetchValuation() {
+    const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const payload = await res.json().catch(() => ({}));
+    if (payload && Array.isArray(payload.data)) return payload.data[0] || null;
+    if (Array.isArray(payload)) return payload[0] || null;
+    return payload?.data || null;
+  }
+
+  async function fetchProjectName() {
+    if (!projectId) return null;
+    const res = await fetch(`${base}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const payload = await res.json().catch(() => ({}));
+    const first = Array.isArray(payload) ? payload[0] : (Array.isArray(payload?.data) ? payload.data[0] : payload?.data || null);
+    return first?.name || first?.project_name || first?.title || null;
+  }
+
+  async function fetchItems() {
+    const res = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const payload = await res.json().catch(() => ({}));
+    if (payload && Array.isArray(payload.data)) return payload.data;
+    if (Array.isArray(payload)) return payload;
+    return [];
+  }
+
+  async function bootstrap() {
+    if (!valuationId) return;
+
+    const [valuation, projectName, items] = await Promise.all([
+      fetchValuation(),
+      fetchProjectName(),
+      fetchItems()
+    ]);
+
+    if (!valuation) return;
+
+    if (projectNameEl) projectNameEl.textContent = projectName || `Proyecto #${projectId || valuation.project_id || ''}`;
+    if (titleEl) titleEl.textContent = `Valuación #${valuationId}`;
+    if (dateEl) dateEl.textContent = formatDate(valuation.date);
+    if (valuatorEl) valuatorEl.textContent = valuation.valuator || '—';
+    if (statusEl) statusEl.textContent = valuation.status || '—';
+    if (notesEl) notesEl.textContent = valuation.notes || '—';
+
+    let total = 0;
+    if (!items.length) {
+      if (itemsBody) itemsBody.innerHTML = '<tr><td colspan="6">Sin partidas registradas.</td></tr>';
+      if (totalCell) totalCell.textContent = formatNumber(0);
+      window.print();
+      return;
+    }
+
+    if (itemsBody) {
+      itemsBody.innerHTML = items.map((item, index) => {
+        const qty = Number(item.qty || 0);
+        const unitCost = Number(item.unit_cost || 0);
+        const rowTotal = Number(item.total_cost || qty * unitCost || 0);
+        total += rowTotal;
+
+        return `
+          <tr>
+            <td class="print-center">${index + 1}</td>
+            <td>${item.item_name || item.name || `Partida ${index + 1}`}</td>
+            <td class="print-center text-center">${item.unit || ''}</td>
+            <td class="print-center text-center">${qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="print-right  text-right">${formatNumber(unitCost)}</td>
+            <td class="print-right  text-right">${formatNumber(rowTotal)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    if (totalCell) totalCell.textContent = formatNumber(total);
+
+    window.print();
+  }
+
+  bootstrap();
+</script>

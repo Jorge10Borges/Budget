@@ -42,7 +42,15 @@ try {
     }
 
     if ($valuation_id) {
-        $stmt = $mysqli->prepare("SELECT * FROM valuation_items WHERE valuation_id = ? ORDER BY id ASC");
+        $sql = "SELECT vi.*, 
+                       COALESCE(i.name, '') AS item_name,
+                       COALESCE(i.unit, '') AS unit
+                FROM valuation_items vi
+                LEFT JOIN project_items pi ON pi.id = vi.project_item_id
+                LEFT JOIN items i ON i.id = pi.item_id
+                WHERE vi.valuation_id = ?
+                ORDER BY vi.id ASC";
+        $stmt = $mysqli->prepare($sql);
         $stmt->bind_param('i', $valuation_id);
         $stmt->execute();
         $res = $stmt->get_result();

@@ -423,6 +423,8 @@ export async function getStaticPaths() { return []; }
         const id = v.id || '';
         const pid = projectNameEl?.dataset.projectId || '';
         const editHref = `/projects/${encodeURIComponent(pid)}/valuations/${encodeURIComponent(String(id))}/edit`;
+        const viewHref = `/projects/${encodeURIComponent(pid)}/valuations/${encodeURIComponent(String(id))}/view`;
+        const printHref = `/projects/${encodeURIComponent(pid)}/valuations/${encodeURIComponent(String(id))}/print`;
         const date = v.date || (v.created_at ? v.created_at.split(' ')[0] : '');
         const createdAt = v.created_at || '';
         const parsed = extractValuatorAndObservation(v.notes);
@@ -444,7 +446,13 @@ export async function getStaticPaths() { return []; }
             <td class="px-3 py-3 text-sm">${badgeFor(status)}</td>
             <td class="px-3 py-3 text-sm text-muted">${escapeHtml(observationShort || '—')}</td>
             <td class="px-3 py-3 text-sm text-center">
-                <a href="${editHref}" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Editar">
+                <a href="${viewHref}" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface cursor-pointer" title="Ver valuación">
+                  <span class="material-symbols-outlined">visibility</span>
+                </a>
+                <a href="${printHref}" target="_blank" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface ml-2 cursor-pointer" title="Imprimir valuación">
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                </a>
+                <a href="${editHref}" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-on-surface ml-2 cursor-pointer" title="Editar">
                   <span class="material-symbols-outlined">edit</span>
                 </a>
                 <button type="button" data-action="delete" data-id="${escapeHtml(String(id))}" class="inline-flex items-center p-1 rounded hover:bg-button-hover text-error ml-2 cursor-pointer" title="Eliminar">
