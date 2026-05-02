@@ -84,6 +84,7 @@ export async function getStaticPaths() {
       const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
       const collected = Number(p.valuations_collected ?? p.collected ?? 0);
       const spent = Number(p.spent ?? 0);
+      const projectCurrency = (p.currency ?? 'USD');
       const collectedPct = budget ? Math.min(100, Math.round((collected / budget) * 100)) : 0;
       const spentPct = budget ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
       const status = (p.status ?? p.state ?? '').toString();
@@ -122,27 +123,19 @@ export async function getStaticPaths() {
               </div>
             </div>
           </div>
-          <div id="kpis" class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <!-- Featured KPI (Partidas) -->
-            <a href="/projects/${p.id}/items" class="bg-gradient-to-br from-primary to-primary-container p-4 rounded-xl text-on-primary shadow-lg flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
+          <div id="kpis" class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <!-- Collected KPI (first) -->
+            <a href="/projects/${p.id}/collections" class="bg-gradient-to-br from-sky-500 to-cyan-600 p-4 rounded-xl text-white shadow-sm flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
               <div class="flex items-start justify-between">
                 <div>
-                  <div class="text-[10px] font-medium uppercase opacity-90">Partidas</div>
-                  <div id="kpi-items-total" class="text-2xl font-extrabold mt-2">—</div>
+                  <div class="text-[10px] font-medium uppercase text-white/90">Cobrado</div>
+                  <div id="kpi-collected-total" class="text-2xl font-extrabold mt-2">${new Intl.NumberFormat('es-MX', { style: 'currency', currency: projectCurrency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(collected)}</div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined opacity-90">widgets</span>
-                </div>
+                <span class="material-symbols-outlined text-white">payments</span>
               </div>
-              <div class="mt-3 text-sm text-on-primary/90 flex items-center justify-between">
-                <div id="kpi-items-closed">Cerradas: —</div>
-                <div class="text-xs bg-white/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                  <span id="kpi-items-badge-loader" class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined animate-spin text-xs">progress_activity</span>
-                    Cargando...
-                  </span>
-                  <span id="kpi-items-badge-text" class="hidden">Ver partidas</span>
-                </div>
+              <div class="mt-3 text-sm text-white/90 flex items-center justify-between">
+                <div id="kpi-collected-pct">Avance: ${collectedPct}%</div>
+                <div class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Sobre presupuesto</div>
               </div>
             </a>
 
@@ -187,25 +180,50 @@ export async function getStaticPaths() {
                 </div>
               </div>
             </a>
+
+            <!-- Featured KPI (Partidas) -->
+            <a href="/projects/${p.id}/items" class="bg-gradient-to-br from-primary to-primary-container p-4 rounded-xl text-on-primary shadow-lg flex flex-col justify-between cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-[10px] font-medium uppercase opacity-90">Partidas</div>
+                  <div id="kpi-items-total" class="text-2xl font-extrabold mt-2">—</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined opacity-90">widgets</span>
+                </div>
+              </div>
+              <div class="mt-3 text-sm text-on-primary/90 flex items-center justify-between">
+                <div id="kpi-items-closed">Cerradas: —</div>
+                <div class="text-xs bg-white/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                  <span id="kpi-items-badge-loader" class="inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined animate-spin text-xs">progress_activity</span>
+                    Cargando...
+                  </span>
+                  <span id="kpi-items-badge-text" class="hidden">Ver partidas</span>
+                </div>
+              </div>
+            </a>
           </div>
         </header>
 
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section class="grid grid-cols-1 md:grid-cols-1 gap-4">
           <div>
             <div class="text-xs text-on-surface-variant mb-2">Presupuesto</div>
             <div class="text-lg font-semibold">${p.currency ?? 'USD'} ${fmt.format(budget)}</div>
 
-            <div class="mt-4">
-              <div class="text-xs text-on-surface-variant mb-1">Cobrado · ${collectedPct}%</div>
-              <div class="w-full h-3 rounded-md bg-surface-dim overflow-hidden">
-                <div class="h-3 bg-primary" style="width: ${collectedPct}%"></div>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs text-on-surface-variant mb-1">Cobrado · ${collectedPct}%</div>
+                <div class="w-full h-3 rounded-md bg-surface-dim overflow-hidden">
+                  <div class="h-3 bg-primary" style="width: ${collectedPct}%"></div>
+                </div>
               </div>
-            </div>
 
-            <div class="mt-3">
-              <div id="spent-progress-label" class="text-xs text-on-surface-variant mb-1">Gastado · ${spentPct}%</div>
-              <div class="w-full h-3 rounded-md bg-surface-dim overflow-hidden">
-                <div id="spent-progress-bar" class="h-3 bg-error" style="width: ${spentPct}%"></div>
+              <div>
+                <div id="spent-progress-label" class="text-xs text-on-surface-variant mb-1">Gastado · ${spentPct}%</div>
+                <div class="w-full h-3 rounded-md bg-surface-dim overflow-hidden">
+                  <div id="spent-progress-bar" class="h-3 bg-error" style="width: ${spentPct}%"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -234,6 +252,10 @@ export async function getStaticPaths() {
                 <span class="material-symbols-outlined">assignment_turned_in</span>
                 Ver valuaciones
               </a>
+              <a href="/projects/${p.id}/collections" class="px-3 py-2 ml-2 border border-primary text-primary rounded-md text-center inline-flex items-center justify-start gap-1 rounded-2xl cursor-pointer hover:bg-primary/10 transition-colors">
+                <span class="material-symbols-outlined">payments</span>
+                Ver cobros
+              </a>
             </div>
           </div>
         </section>
@@ -242,6 +264,7 @@ export async function getStaticPaths() {
           <h2 class="text-lg font-semibold text-on-surface">Detalle</h2>
           <p class="text-sm text-on-surface-variant mt-2">${p.description ?? p.desc ?? '—'}</p>
         </section>
+
       `;
 
       const statusTrigger = document.getElementById('project-status-trigger');

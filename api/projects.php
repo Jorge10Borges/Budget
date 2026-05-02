@@ -108,18 +108,31 @@ function payroll_join_sql($mysqli) {
     return "LEFT JOIN (SELECT 0 AS project_id, 0 AS total_payroll) pe ON pe.project_id = p.id";
 }
 
+function collections_join_sql($mysqli) {
+    if (!table_exists($mysqli, 'project_collections')) {
+        return "LEFT JOIN (SELECT 0 AS project_id, 0 AS collections_total) pc ON pc.project_id = p.id";
+    }
+
+    return "LEFT JOIN (
+                SELECT project_id, SUM(amount) AS collections_total
+                FROM project_collections
+                GROUP BY project_id
+            ) pc ON pc.project_id = p.id";
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
 try {
     $payrollJoinSql = payroll_join_sql($mysqli);
+    $collectionsJoinSql = collections_join_sql($mysqli);
 
     if ($method === 'GET') {
         if ($id) {
             // Return single project with calculated budget from project_items
                      $sql = "SELECT p.*, COALESCE(t.calc_budget, 0) AS calculated_budget,
                           (COALESCE(e.total_spent, 0) + COALESCE(pe.total_payroll, 0)) AS spent,
-                          COALESCE(v.valuations_collected, 0) AS valuations_collected,
+                          (COALESCE(v.valuations_collected, 0) + COALESCE(pc.collections_total, 0)) AS valuations_collected,
                           COALESCE(vt.valuations_total, 0) AS valuations_total
                     FROM projects p
                     LEFT JOIN (
@@ -135,6 +148,7 @@ try {
                         GROUP BY project_id
                     ) e ON e.project_id = p.id
                     {$payrollJoinSql}
+                    {$collectionsJoinSql}
                     LEFT JOIN (
                         SELECT project_id, SUM(amount) AS valuations_collected
                         FROM valuations
@@ -162,7 +176,7 @@ try {
                    $sql = "SELECT p.id, p.external_id, p.name, p.description, p.client, p.owner_user_id, p.status,
                          COALESCE(t.calc_budget, 0) AS calculated_budget,
                          (COALESCE(e.total_spent, 0) + COALESCE(pe.total_payroll, 0)) AS spent,
-                          COALESCE(v.valuations_collected, 0) AS valuations_collected,
+                          (COALESCE(v.valuations_collected, 0) + COALESCE(pc.collections_total, 0)) AS valuations_collected,
                           COALESCE(vt.valuations_total, 0) AS valuations_total,
                           p.currency, p.start_date, p.end_date, p.last_activity, p.is_active, p.created_at, p.updated_at
                     FROM projects p
@@ -179,6 +193,7 @@ try {
                         GROUP BY project_id
                     ) e ON e.project_id = p.id
                     {$payrollJoinSql}
+                    {$collectionsJoinSql}
                     LEFT JOIN (
                         SELECT project_id, SUM(amount) AS valuations_collected
                         FROM valuations

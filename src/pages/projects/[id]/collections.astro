@@ -1,0 +1,621 @@
+---
+import MainLayout from '../../../layouts/MainLayout.astro';
+import NavBarDesktop from '../../../components/NavBarDesktop.astro';
+import NavBarMobil from '../../../components/NavBarMobil.astro';
+
+export const prerender = false;
+
+const projectId = (Astro.params as Record<string, string> | undefined)?.id ?? null;
+export async function getStaticPaths() { return []; }
+---
+
+<MainLayout>
+  <NavBarDesktop />
+
+  <main class="pt-24 px-6 container mx-auto">
+    <a href={`/projects/${projectId}`} class="text-sm text-primary cursor-pointer">← Volver al proyecto</a>
+
+    <section class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 id="project-name" data-project-id={projectId} class="text-2xl font-bold text-on-surface">Proyecto #{projectId}</h1>
+        <h2 class="mt-1 text-lg font-semibold text-on-surface">Cobros</h2>
+        <p class="text-sm text-on-surface-variant">Cobros directos del proyecto (anticipos u otros tipos).</p>
+      </div>
+
+      <button id="open-collection-form" type="button" class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-on-primary shadow-sm transition hover:brightness-95 cursor-pointer">
+        <span class="material-symbols-outlined text-base">add</span>
+        Registrar cobro
+      </button>
+    </section>
+
+    <section class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <article class="rounded-xl border border-outline-variant/10 bg-linear-to-br from-sky-500 to-cyan-600 p-4 text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-white/90">Monto total cobrado</div>
+            <div id="kpi-collected-amount" class="mt-2 text-2xl font-extrabold">$ 0.00</div>
+          </div>
+          <span class="material-symbols-outlined text-white">payments</span>
+        </div>
+        <div class="mt-3 inline-flex rounded-full bg-white/20 px-2 py-0.5 text-xs text-white">Suma de cobros directos</div>
+      </article>
+
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 shadow-sm transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Anticipos</div>
+            <div id="kpi-advances-count" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+          </div>
+          <span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+        </div>
+        <div class="mt-3 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Cobros tipo anticipo</div>
+      </article>
+
+      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4 shadow-sm transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Otros cobros</div>
+            <div id="kpi-others-count" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+          </div>
+          <span class="material-symbols-outlined text-amber-600">category</span>
+        </div>
+        <div class="mt-3 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">Cobros con tipo personalizado</div>
+      </article>
+    </section>
+
+    <section class="mt-6 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-4 shadow-[0_8px_24px_rgba(13,28,47,0.04)]">
+      <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 class="text-lg font-semibold text-on-surface">Listado de cobros</h3>
+          <p class="text-sm text-on-surface-variant">Gestiona los cobros directos registrados para este proyecto.</p>
+        </div>
+        <input id="collections-search" type="search" placeholder="Buscar por tipo o nota" class="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint sm:w-80" />
+      </div>
+
+      <div id="collections-root" class="overflow-x-auto">
+        <div class="text-on-surface-variant">Cargando cobros...</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="collection-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <button id="collection-modal-backdrop" type="button" class="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-200 ease-out" aria-label="Cerrar modal"></button>
+    <section id="collection-modal-panel" class="relative z-10 w-full max-w-2xl rounded-2xl border border-outline-variant/20 bg-surface shadow-xl transform-gpu opacity-0 translate-y-4 scale-95 transition-all duration-200 ease-out will-change-transform will-change-opacity">
+      <div class="flex items-start justify-between gap-4 border-b border-outline-variant/15 px-5 py-4">
+        <div>
+          <h3 id="collection-form-title" class="text-lg font-semibold text-on-surface">Registrar cobro</h3>
+          <p class="text-sm text-on-surface-variant">Indica fecha, monto y tipo del cobro.</p>
+        </div>
+        <button type="button" data-close-collection-modal class="inline-flex items-center justify-center rounded-md p-1 text-on-surface-variant transition hover:bg-surface-container-high cursor-pointer" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form id="collection-form" class="max-h-[78vh] overflow-y-auto p-5 space-y-5">
+        <input id="collection-id" type="hidden" />
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Fecha</span>
+            <input id="collection-date" type="date" required class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+
+          <label class="block">
+            <span class="text-xs text-on-surface-variant">Monto</span>
+            <input id="collection-amount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+          </label>
+        </div>
+
+        <div>
+          <div class="text-xs text-on-surface-variant mb-2">Tipo de cobro</div>
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="collection-kind" value="anticipo" checked />
+              <span>Anticipo</span>
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="collection-kind" value="otro" />
+              <span>Otro</span>
+            </label>
+          </div>
+        </div>
+
+        <label id="collection-other-type-wrap" class="hidden">
+          <span class="text-xs text-on-surface-variant">Especificar tipo de cobro</span>
+          <input id="collection-other-type" type="text" maxlength="120" placeholder="Ej. cobro parcial, ajuste, reembolso" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint" />
+        </label>
+
+        <label class="block">
+          <span class="text-xs text-on-surface-variant">Notas (opcional)</span>
+          <textarea id="collection-notes" rows="3" placeholder="Detalles del cobro" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-on-surface outline-none focus:ring-2 focus:ring-surface-tint"></textarea>
+        </label>
+
+        <div id="collection-form-error" class="hidden rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error"></div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button id="collection-form-reset" type="button" class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Limpiar</button>
+          <button id="cancel-collection-edit" type="button" class="hidden rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar edición</button>
+          <button id="collection-submit" type="submit" class="rounded-lg bg-primary px-4 py-2 text-on-primary shadow-sm transition hover:brightness-95 cursor-pointer">Guardar cobro</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="collection-delete-modal" class="fixed inset-0 z-60 hidden items-center justify-center px-4">
+    <button id="collection-delete-modal-backdrop" type="button" data-close-delete-modal class="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-200 ease-out" aria-label="Cerrar confirmación"></button>
+    <section id="collection-delete-modal-panel" class="relative z-10 w-full max-w-md rounded-2xl border border-outline-variant/20 bg-surface shadow-xl transform-gpu opacity-0 translate-y-4 scale-95 transition-all duration-200 ease-out will-change-transform will-change-opacity">
+      <div class="border-b border-outline-variant/15 px-5 py-4">
+        <h3 class="text-lg font-semibold text-on-surface">Confirmar eliminación</h3>
+        <p class="mt-1 text-sm text-on-surface-variant">Esta acción elimina el cobro de forma permanente.</p>
+      </div>
+
+      <div class="space-y-3 px-5 py-4">
+        <div class="rounded-xl border border-error/20 bg-error/10 px-3 py-3 text-sm text-on-surface">
+          <p class="font-medium text-error">¿Deseas eliminar este cobro?</p>
+          <p id="delete-collection-summary" class="mt-1 text-on-surface-variant"></p>
+        </div>
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-outline-variant/15 px-5 py-4 sm:flex-row sm:justify-end">
+        <button id="cancel-collection-delete" type="button" data-close-delete-modal class="rounded-lg border border-outline-variant px-4 py-2 text-on-surface cursor-pointer">Cancelar</button>
+        <button id="confirm-collection-delete" type="button" class="inline-flex items-center justify-center gap-2 rounded-lg bg-error px-4 py-2 text-on-error shadow-sm transition hover:brightness-95 cursor-pointer">
+          <span class="material-symbols-outlined text-base">delete</span>
+          Eliminar cobro
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    const pageRoot = document.getElementById('project-name');
+    const projectId = pageRoot ? pageRoot.dataset.projectId : null;
+    const _meta = document.querySelector('meta[name="api-base"]');
+    const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+    const apiBase = _apiBase.replace(/\/$/, '');
+
+    const collectionsRoot = document.getElementById('collections-root');
+    const searchInput = document.getElementById('collections-search');
+
+    const modal = document.getElementById('collection-modal');
+    const modalBackdrop = document.getElementById('collection-modal-backdrop');
+    const modalPanel = document.getElementById('collection-modal-panel');
+    const deleteModal = document.getElementById('collection-delete-modal');
+    const deleteModalBackdrop = document.getElementById('collection-delete-modal-backdrop');
+    const deleteModalPanel = document.getElementById('collection-delete-modal-panel');
+    const deleteSummaryEl = document.getElementById('delete-collection-summary');
+    const confirmDeleteBtn = document.getElementById('confirm-collection-delete');
+
+    const openFormBtn = document.getElementById('open-collection-form');
+    const form = document.getElementById('collection-form');
+    const formTitle = document.getElementById('collection-form-title');
+    const formError = document.getElementById('collection-form-error');
+    const resetBtn = document.getElementById('collection-form-reset');
+    const cancelEditBtn = document.getElementById('cancel-collection-edit');
+
+    const kpiCollectedAmount = document.getElementById('kpi-collected-amount');
+    const kpiAdvancesCount = document.getElementById('kpi-advances-count');
+    const kpiOthersCount = document.getElementById('kpi-others-count');
+
+    const fields = {
+      id: document.getElementById('collection-id'),
+      date: document.getElementById('collection-date'),
+      amount: document.getElementById('collection-amount'),
+      otherType: document.getElementById('collection-other-type'),
+      notes: document.getElementById('collection-notes')
+    };
+
+    const otherTypeWrap = document.getElementById('collection-other-type-wrap');
+    const kindInputs = document.querySelectorAll('input[name="collection-kind"]');
+
+    let collections = [];
+    let pendingDeleteId = null;
+    let pendingDeleteResolve = null;
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatCurrency(amount, currency = 'USD') {
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(Number(amount || 0));
+      } catch {
+        return `$ ${Number(amount || 0).toFixed(2)}`;
+      }
+    }
+
+    function getSelectedKind() {
+      const selected = Array.from(kindInputs).find((input) => input.checked);
+      return selected ? selected.value : 'anticipo';
+    }
+
+    function setSelectedKind(kind) {
+      kindInputs.forEach((input) => {
+        input.checked = input.value === kind;
+      });
+      syncOtherType();
+    }
+
+    function syncOtherType() {
+      const isOther = getSelectedKind() === 'otro';
+      otherTypeWrap?.classList.toggle('hidden', !isOther);
+      if (!isOther && fields.otherType) fields.otherType.value = '';
+    }
+
+    function setTodayIfEmpty() {
+      if (!fields.date || fields.date.value) return;
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      fields.date.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    async function loadProjectName() {
+      if (!pageRoot || !projectId) return;
+      try {
+        const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const payload = await res.json();
+        const p = payload?.data || null;
+        if (p?.name) pageRoot.textContent = p.name;
+      } catch {}
+    }
+
+    function updateKpis(rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      const total = list.reduce((acc, row) => acc + Number(row.amount || 0), 0);
+      const advances = list.filter((row) => String(row.collection_kind || '').toLowerCase() === 'anticipo').length;
+      const others = list.filter((row) => String(row.collection_kind || '').toLowerCase() === 'otro').length;
+
+      if (kpiCollectedAmount) kpiCollectedAmount.textContent = formatCurrency(total, 'USD');
+      if (kpiAdvancesCount) kpiAdvancesCount.textContent = String(advances);
+      if (kpiOthersCount) kpiOthersCount.textContent = String(others);
+    }
+
+    function setModalVisibility(visible) {
+      if (!modal) return;
+
+      if (visible) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(() => {
+          modalBackdrop?.classList.remove('opacity-0');
+          modalBackdrop?.classList.add('opacity-100');
+          modalPanel?.classList.remove('opacity-0', 'translate-y-4', 'scale-95');
+          modalPanel?.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+        });
+        return;
+      }
+
+      modalBackdrop?.classList.remove('opacity-100');
+      modalBackdrop?.classList.add('opacity-0');
+      modalPanel?.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+      modalPanel?.classList.add('opacity-0', 'translate-y-4', 'scale-95');
+
+      const finish = () => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      };
+
+      setTimeout(finish, 220);
+    }
+
+    function setDeleteModalVisibility(visible) {
+      if (!deleteModal) return;
+
+      if (visible) {
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(() => {
+          deleteModalBackdrop?.classList.remove('opacity-0');
+          deleteModalBackdrop?.classList.add('opacity-100');
+          deleteModalPanel?.classList.remove('opacity-0', 'translate-y-4', 'scale-95');
+          deleteModalPanel?.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+        });
+        return;
+      }
+
+      deleteModalBackdrop?.classList.remove('opacity-100');
+      deleteModalBackdrop?.classList.add('opacity-0');
+      deleteModalPanel?.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+      deleteModalPanel?.classList.add('opacity-0', 'translate-y-4', 'scale-95');
+
+      const finish = () => {
+        deleteModal.classList.remove('flex');
+        deleteModal.classList.add('hidden');
+        document.body.style.overflow = '';
+      };
+
+      setTimeout(finish, 220);
+    }
+
+    function setFormError(message = '') {
+      if (!formError) return;
+      formError.textContent = message;
+      formError.classList.toggle('hidden', message === '');
+    }
+
+    function resetForm() {
+      if (!form) return;
+      form.reset();
+      fields.id.value = '';
+      setSelectedKind('anticipo');
+      setTodayIfEmpty();
+      setFormError('');
+      formTitle.textContent = 'Registrar cobro';
+      cancelEditBtn?.classList.add('hidden');
+    }
+
+    function startEdit(row) {
+      fields.id.value = String(row.id || '');
+      fields.date.value = String(row.collection_date || '');
+      fields.amount.value = String(row.amount || '');
+      fields.notes.value = String(row.notes || '');
+      setSelectedKind(String(row.collection_kind || 'anticipo'));
+      fields.otherType.value = String(row.other_type || '');
+      setFormError('');
+      formTitle.textContent = 'Editar cobro';
+      cancelEditBtn?.classList.remove('hidden');
+      setModalVisibility(true);
+    }
+
+    async function openDeleteModal(row) {
+      if (!row?.id) return false;
+      pendingDeleteId = Number(row.id);
+      const kindLabel = String(row.collection_kind || '').toLowerCase() === 'otro'
+        ? `Otro (${row.other_type || 'sin tipo'})`
+        : 'Anticipo';
+      if (deleteSummaryEl) {
+        deleteSummaryEl.textContent = `${kindLabel} · ${formatCurrency(row.amount || 0)} · ${row.collection_date || ''}`;
+      }
+
+      setDeleteModalVisibility(true);
+
+      return new Promise((resolve) => {
+        pendingDeleteResolve = resolve;
+      });
+    }
+
+    function resolveDeleteModal(result) {
+      if (typeof pendingDeleteResolve === 'function') pendingDeleteResolve(result);
+      pendingDeleteResolve = null;
+      pendingDeleteId = null;
+      setDeleteModalVisibility(false);
+    }
+
+    function getFilteredCollections() {
+      const q = String(searchInput?.value || '').trim().toLowerCase();
+      if (!q) return collections;
+      return collections.filter((row) => {
+        const kind = String(row.collection_kind || '').toLowerCase();
+        const other = String(row.other_type || '').toLowerCase();
+        const notes = String(row.notes || '').toLowerCase();
+        return kind.includes(q) || other.includes(q) || notes.includes(q);
+      });
+    }
+
+    function renderTable(rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      if (!collectionsRoot) return;
+
+      if (list.length === 0) {
+        collectionsRoot.innerHTML = '<div class="rounded-xl border border-dashed border-outline-variant/30 bg-surface px-4 py-10 text-center text-sm text-on-surface-variant">No hay cobros registrados todavía.</div>';
+        return;
+      }
+
+      const html = list.map((row) => {
+        const isOther = String(row.collection_kind || '').toLowerCase() === 'otro';
+        const kindLabel = isOther ? `Otro: ${escapeHtml(row.other_type || '—')}` : 'Anticipo';
+
+        return `
+          <tr class="border-b border-outline-variant/10 last:border-b-0">
+            <td class="px-3 py-3 text-sm text-on-surface">${escapeHtml(row.collection_date || '—')}</td>
+            <td class="px-3 py-3 text-sm text-on-surface font-medium">${formatCurrency(row.amount || 0)}</td>
+            <td class="px-3 py-3 text-sm text-on-surface">${kindLabel}</td>
+            <td class="px-3 py-3 text-sm text-on-surface-variant">${escapeHtml(row.notes || '—')}</td>
+            <td class="px-3 py-3 text-sm text-on-surface text-center">
+              <div class="inline-flex items-center gap-2">
+                <button type="button" data-action="edit" data-id="${row.id}" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-outline-variant text-on-surface hover:bg-surface cursor-pointer" title="Editar cobro" aria-label="Editar cobro">
+                  <span class="material-symbols-outlined text-base">edit</span>
+                </button>
+                <button type="button" data-action="delete" data-id="${row.id}" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-error/30 text-error hover:bg-error/10 cursor-pointer" title="Eliminar cobro" aria-label="Eliminar cobro">
+                  <span class="material-symbols-outlined text-base">delete</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      collectionsRoot.innerHTML = `
+        <table class="w-full min-w-220">
+          <thead>
+            <tr class="border-b border-outline-variant/20 text-left text-xs uppercase tracking-wide text-on-surface-variant">
+              <th class="px-3 py-3">Fecha</th>
+              <th class="px-3 py-3">Monto</th>
+              <th class="px-3 py-3">Tipo</th>
+              <th class="px-3 py-3">Notas</th>
+              <th class="px-3 py-3 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>${html}</tbody>
+        </table>
+      `;
+
+      collectionsRoot.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.getAttribute('data-id') || 0);
+          const row = collections.find((item) => Number(item.id) === id);
+          if (row) startEdit(row);
+        });
+      });
+
+      collectionsRoot.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.getAttribute('data-id') || 0);
+          const row = collections.find((item) => Number(item.id) === id);
+          if (!row) return;
+
+          const confirmed = await openDeleteModal(row);
+          if (!confirmed) return;
+
+          try {
+            const res = await fetch(`${apiBase}/project_collections.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || payload.message || 'No se pudo eliminar el cobro');
+            await loadCollections();
+          } catch (error) {
+            console.error('Delete collection failed', error);
+            alert(error instanceof Error ? error.message : 'No se pudo eliminar el cobro');
+          }
+        });
+      });
+    }
+
+    async function loadCollections() {
+      if (!projectId || !collectionsRoot) return;
+      collectionsRoot.innerHTML = '<div class="text-on-surface-variant">Cargando cobros...</div>';
+
+      try {
+        const res = await fetch(`${apiBase}/project_collections.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error || payload.message || 'No se pudieron cargar los cobros');
+
+        collections = Array.isArray(payload.data) ? payload.data : [];
+        updateKpis(collections);
+        renderTable(getFilteredCollections());
+      } catch (error) {
+        console.error('Load collections failed', error);
+        collections = [];
+        updateKpis([]);
+        collectionsRoot.innerHTML = '<div class="text-error">No se pudieron cargar los cobros.</div>';
+      }
+    }
+
+    openFormBtn?.addEventListener('click', () => {
+      resetForm();
+      setModalVisibility(true);
+    });
+
+    modal?.querySelectorAll('[data-close-collection-modal]').forEach((btn) => {
+      btn.addEventListener('click', () => setModalVisibility(false));
+    });
+
+    modalBackdrop?.addEventListener('click', () => setModalVisibility(false));
+
+    resetBtn?.addEventListener('click', () => {
+      resetForm();
+    });
+
+    cancelEditBtn?.addEventListener('click', () => {
+      resetForm();
+    });
+
+    kindInputs.forEach((input) => input.addEventListener('change', syncOtherType));
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setFormError('');
+
+      const id = Number(fields.id.value || 0);
+      const date = String(fields.date.value || '').trim();
+      const amount = Number(fields.amount.value || 0);
+      const kind = getSelectedKind();
+      const otherType = String(fields.otherType.value || '').trim();
+      const notes = String(fields.notes.value || '').trim();
+
+      if (!date) {
+        setFormError('La fecha del cobro es obligatoria.');
+        return;
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setFormError('El monto debe ser mayor a cero.');
+        return;
+      }
+      if (kind === 'otro' && !otherType) {
+        setFormError('Debes especificar qué tipo de cobro fue.');
+        return;
+      }
+
+      const payload = {
+        project_id: Number(projectId),
+        collection_date: date,
+        amount,
+        collection_kind: kind,
+        other_type: kind === 'otro' ? otherType : null,
+        notes: notes || null
+      };
+
+      const submitBtn = document.getElementById('collection-submit');
+      submitBtn?.setAttribute('disabled', 'true');
+
+      try {
+        const url = id > 0
+          ? `${apiBase}/project_collections.php?id=${encodeURIComponent(id)}`
+          : `${apiBase}/project_collections.php`;
+        const method = id > 0 ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || body.message || 'No se pudo guardar el cobro');
+
+        setModalVisibility(false);
+        resetForm();
+        await loadCollections();
+      } catch (error) {
+        console.error('Save collection failed', error);
+        setFormError(error instanceof Error ? error.message : 'No se pudo guardar el cobro');
+      } finally {
+        submitBtn?.removeAttribute('disabled');
+      }
+    });
+
+    deleteModal?.querySelectorAll('[data-close-delete-modal]').forEach((btn) => {
+      btn.addEventListener('click', () => resolveDeleteModal(false));
+    });
+
+    document.getElementById('confirm-collection-delete')?.addEventListener('click', () => {
+      resolveDeleteModal(true);
+    });
+
+    searchInput?.addEventListener('input', () => {
+      renderTable(getFilteredCollections());
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!deleteModal?.classList.contains('hidden')) {
+        resolveDeleteModal(false);
+        return;
+      }
+      if (!modal?.classList.contains('hidden')) {
+        setModalVisibility(false);
+      }
+    });
+
+    loadProjectName();
+    resetForm();
+    loadCollections();
+  </script>
+
+  <NavBarMobil />
+</MainLayout>

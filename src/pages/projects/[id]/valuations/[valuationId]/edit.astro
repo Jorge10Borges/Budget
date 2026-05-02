@@ -393,7 +393,7 @@ export async function getStaticPaths() { return []; }
     if (dateInput) dateInput.value = valuation.date || '';
     if (stateSelect) stateSelect.value = valuation.status || 'Borrador';
     const parsedNotes = extractValuatorAndObservation(valuation.notes || '');
-    if (valuatorInput) valuatorInput.value = parsedNotes.valuator || '';
+    if (valuatorInput) valuatorInput.value = String(valuation.valuator || '').trim() || parsedNotes.valuator || '';
     if (descInput) descInput.value = parsedNotes.observation || '';
 
     const itemsRes = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });

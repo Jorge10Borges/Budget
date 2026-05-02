@@ -20,6 +20,26 @@ try {
 
     $valuation_id = isset($_GET['valuation_id']) ? (int)$_GET['valuation_id'] : null;
     $project_item_id = isset($_GET['project_item_id']) ? (int)$_GET['project_item_id'] : null;
+    $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+
+    if ($project_id) {
+        $sql = "SELECT vi.project_item_id,
+                       SUM(COALESCE(vi.qty, 0)) AS qty_valued
+                FROM valuation_items vi
+                INNER JOIN valuations v ON v.id = vi.valuation_id
+                WHERE v.project_id = ?
+                GROUP BY vi.project_item_id
+                ORDER BY vi.project_item_id ASC";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param('i', $project_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $rows = [];
+        while ($r = $res->fetch_assoc()) { $rows[] = $r; }
+        $stmt->close();
+        echo json_encode(['data' => $rows]);
+        exit;
+    }
 
     if ($valuation_id) {
         $stmt = $mysqli->prepare("SELECT * FROM valuation_items WHERE valuation_id = ? ORDER BY id ASC");
@@ -46,7 +66,7 @@ try {
     }
 
     http_response_code(400);
-    echo json_encode(['error' => 'valuation_id or project_item_id required']);
+    echo json_encode(['error' => 'project_id, valuation_id or project_item_id required']);
 
 } catch (Exception $e) {
     http_response_code(500);

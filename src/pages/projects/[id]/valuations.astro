@@ -37,7 +37,7 @@ export async function getStaticPaths() { return []; }
           </div>
           <span class="material-symbols-outlined opacity-90">payments</span>
         </div>
-        <div class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Suma de todas las valuaciones</div>
+        <div id="kpi-total-valued-badge" class="mt-3 text-xs bg-white/20 inline-flex px-2 py-0.5 rounded-full">Cobrado total: $ 0.00 · 0% del presupuesto</div>
       </article>
 
       <article class="bg-linear-to-br from-emerald-500 to-emerald-600 text-white rounded-xl p-4 shadow-sm border border-outline-variant/10 transition-transform duration-200 hover:scale-[1.02] cursor-pointer">
@@ -153,6 +153,7 @@ export async function getStaticPaths() { return []; }
     // --- Load valuations from API ---
     const valuationsRoot = document.getElementById('valuations-root');
     const kpiTotalEl = document.getElementById('kpi-total-valued');
+    const kpiTotalBadgeEl = document.getElementById('kpi-total-valued-badge');
     const kpiApprovedEl = document.getElementById('kpi-approved');
     const kpiPendingEl = document.getElementById('kpi-pending');
     const kpiCollectedEl = document.getElementById('kpi-collected');
@@ -163,6 +164,10 @@ export async function getStaticPaths() { return []; }
     const confirmDeleteBtn = document.getElementById('confirm-valuation-delete');
 
     let currentValuations = [];
+    let projectBudgetAmount = 0;
+    let projectCollectedAmount = 0;
+    let projectCollectedRatio = 0;
+    let projectCurrency = 'USD';
     let pendingDeleteId = null;
     let pendingDeleteResolve = null;
 
@@ -175,6 +180,49 @@ export async function getStaticPaths() { return []; }
         }).format(Number(value || 0));
       } catch (e) {
         return `${Number(value || 0).toFixed(2)} ${currency || ''}`;
+      }
+    }
+
+    async function loadProjectFinancialMeta() {
+      const pid = projectNameEl ? projectNameEl.dataset.projectId : null;
+      if (!pid) return;
+
+      try {
+        const base = _apiBase.replace(/\/$/, '');
+
+        const [projectRes, collectionsRes] = await Promise.all([
+          fetch(`${base}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store' }),
+          fetch(`${base}/project_collections.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store' })
+        ]);
+
+        if (!projectRes.ok) return;
+
+        const projectPayload = await projectRes.json();
+        const project = projectPayload?.data || (Array.isArray(projectPayload) ? projectPayload[0] : null);
+        if (!project) return;
+
+        projectCurrency = String(project.currency || 'USD');
+        projectBudgetAmount = Number(project.budget ?? project.calculated_budget ?? project.budget_amount ?? 0) || 0;
+
+        let directCollectionsTotal = 0;
+        if (collectionsRes.ok) {
+          const collectionsPayload = await collectionsRes.json().catch(() => ({}));
+          const directCollections = Array.isArray(collectionsPayload?.data) ? collectionsPayload.data : [];
+          directCollectionsTotal = directCollections.reduce((acc, row) => acc + Number(row.amount || 0), 0);
+        }
+
+        // Cobrado en esta vista = anticipos/cobros directos, sin incluir valuaciones cobradas.
+        projectCollectedAmount = directCollectionsTotal;
+
+        if (projectBudgetAmount > 0) {
+          projectCollectedRatio = Math.max(0, Math.min(1, projectCollectedAmount / projectBudgetAmount));
+        } else {
+          projectCollectedRatio = 0;
+        }
+      } catch (e) {
+        projectBudgetAmount = 0;
+        projectCollectedAmount = 0;
+        projectCollectedRatio = 0;
       }
     }
 
@@ -203,6 +251,10 @@ export async function getStaticPaths() { return []; }
 
       const defaultCurrency = list[0]?.currency || 'USD';
       if (kpiTotalEl) kpiTotalEl.textContent = formatCurrency(total, defaultCurrency);
+      if (kpiTotalBadgeEl) {
+        const pct = Math.round(projectCollectedRatio * 100);
+        kpiTotalBadgeEl.textContent = `Cobrado total: ${formatCurrency(projectCollectedAmount, projectCurrency)} · ${pct}% del presupuesto`;
+      }
       if (kpiApprovedEl) kpiApprovedEl.textContent = String(approved);
       if (kpiPendingEl) kpiPendingEl.textContent = String(pending);
       if (kpiCollectedEl) kpiCollectedEl.textContent = String(collected);
@@ -374,8 +426,9 @@ export async function getStaticPaths() { return []; }
         const date = v.date || (v.created_at ? v.created_at.split(' ')[0] : '');
         const createdAt = v.created_at || '';
         const parsed = extractValuatorAndObservation(v.notes);
-        const valuator = parsed.valuator || (v.created_by != null ? `User ${v.created_by}` : '—');
+        const valuator = String(v.valuator || '').trim() || parsed.valuator || (v.created_by != null ? `User ${v.created_by}` : '—');
         const amount = Number(v.amount || 0);
+        const amountToCollect = Math.max(0, amount * (1 - projectCollectedRatio));
         const currency = v.currency || 'USD';
         const status = v.status || 'estimada';
         const observation = parsed.observation;
@@ -387,6 +440,7 @@ export async function getStaticPaths() { return []; }
             <td class="px-3 py-3 text-sm">${escapeHtml(date)}</td>
             <td class="px-3 py-3 text-sm">${escapeHtml(valuator)}</td>
             <td class="px-3 py-3 text-sm text-right font-medium">${fmtCurrency(amount, currency)}</td>
+            <td class="px-3 py-3 text-sm text-right font-semibold">${fmtCurrency(amountToCollect, currency)}</td>
             <td class="px-3 py-3 text-sm">${badgeFor(status)}</td>
             <td class="px-3 py-3 text-sm text-muted">${escapeHtml(observationShort || '—')}</td>
             <td class="px-3 py-3 text-sm text-center">
@@ -410,6 +464,7 @@ export async function getStaticPaths() { return []; }
                 <th class="px-3 py-2">Fecha</th>
                 <th class="px-3 py-2">Valuador</th>
                 <th class="px-3 py-2 text-right">Monto</th>
+                <th class="px-3 py-2 text-right">A Cobrar</th>
                 <th class="px-3 py-2">Estado</th>
                 <th class="px-3 py-2">Observaciones</th>
                 <th class="px-3 py-2 text-center">Acciones</th>
@@ -458,7 +513,10 @@ export async function getStaticPaths() { return []; }
       });
     });
 
-    // cargar valuaciones al inicio
-    loadValuations();
+    // cargar metadatos de proyecto y luego valuaciones
+    (async () => {
+      await loadProjectFinancialMeta();
+      await loadValuations();
+    })();
   </script>
 </MainLayout>

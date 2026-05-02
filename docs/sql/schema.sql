@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS `valuations` (
   `amount` DECIMAL(14,2) NOT NULL DEFAULT 0.00,
   `currency` VARCHAR(10) NOT NULL DEFAULT 'USD',
   `status` VARCHAR(30) NOT NULL DEFAULT 'draft',
+  `valuator` VARCHAR(191) NULL,
   `created_by` INT UNSIGNED NULL,
   `notes` TEXT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

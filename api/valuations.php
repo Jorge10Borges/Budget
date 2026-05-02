@@ -24,8 +24,43 @@ function is_valuation_editable_status($status) {
     return in_array($normalized, ['borrador', 'en revision', 'revision', 'draft'], true);
 }
 
+function column_exists($mysqli, $table, $column) {
+    $dbRes = $mysqli->query('SELECT DATABASE()');
+    $dbRow = $dbRes ? $dbRes->fetch_row() : null;
+    $db = $dbRow ? (string)$dbRow[0] : '';
+    if ($db === '') return false;
+
+    $sql = 'SELECT COUNT(*) AS cnt
+            FROM information_schema.columns
+            WHERE table_schema = ? AND table_name = ? AND column_name = ?';
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) return false;
+    $stmt->bind_param('sss', $db, $table, $column);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (int)($row['cnt'] ?? 0) > 0;
+}
+
+function extract_valuator_from_notes($notes) {
+    $source = trim((string)$notes);
+    if ($source === '') return '';
+    if (preg_match('/^\s*valuador\s*:\s*(.+?)(?:\r?\n\r?\n|\r?\n|$)/i', $source, $matches)) {
+        return trim((string)($matches[1] ?? ''));
+    }
+    return '';
+}
+
+function strip_valuator_prefix_from_notes($notes) {
+    $source = (string)$notes;
+    $clean = preg_replace('/^\s*valuador\s*:\s*.+?(?:\r?\n\r?\n|\r?\n|$)/i', '', $source);
+    return trim((string)$clean);
+}
+
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    $hasValuatorColumn = column_exists($mysqli, 'valuations', 'valuator');
 
     if ($method === 'POST') {
         $body = get_json_body();
@@ -88,16 +123,17 @@ try {
             exit;
         }
 
-        $notesFinal = $notes;
-        if ($valuator !== '') {
-            $notesFinal = $notesFinal !== '' ? "Valuador: {$valuator}\n\n{$notesFinal}" : "Valuador: {$valuator}";
-        }
+        $notes = $notes !== '' ? strip_valuator_prefix_from_notes($notes) : '';
 
         try {
             $mysqli->begin_transaction();
 
-            $insVal = $mysqli->prepare('INSERT INTO valuations (project_id, date, amount, currency, status, notes) VALUES (?, ?, ?, ?, ?, ?)');
-            $insVal->bind_param('isdsss', $project_id, $date, $amount, $currency, $status, $notesFinal);
+            if (!$hasValuatorColumn) {
+                throw new Exception('Missing column valuations.valuator. Run docs/sql/valuations_add_valuator.sql');
+            }
+
+            $insVal = $mysqli->prepare('INSERT INTO valuations (project_id, date, amount, currency, status, valuator, notes) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $insVal->bind_param('isdssss', $project_id, $date, $amount, $currency, $status, $valuator, $notes);
             if (!$insVal->execute()) {
                 throw new Exception('Insert valuation failed: ' . $insVal->error);
             }
@@ -169,12 +205,6 @@ try {
             exit;
         }
 
-        if (!is_valuation_editable_status($row['status'] ?? '')) {
-            http_response_code(409);
-            echo json_encode(['error' => 'Valuation is locked', 'message' => 'Solo se puede modificar una valuación en estado borrador o en revisión']);
-            exit;
-        }
-
         $project_id = (int)($row['project_id'] ?? 0);
 
         $itemsProvided = isset($body['items']) && is_array($body['items']);
@@ -218,15 +248,15 @@ try {
             $body['amount'] = round($amountFromItems, 2);
         }
 
-        if (array_key_exists('valuator', $body) || array_key_exists('notes', $body)) {
-            $valuator = array_key_exists('valuator', $body) ? trim((string)$body['valuator']) : '';
-            $notes = array_key_exists('notes', $body) ? trim((string)$body['notes']) : '';
-            $body['notes'] = $valuator !== ''
-                ? ($notes !== '' ? "Valuador: {$valuator}\n\n{$notes}" : "Valuador: {$valuator}")
-                : $notes;
+        if (array_key_exists('notes', $body)) {
+            $body['notes'] = trim((string)$body['notes']);
         }
 
-        $allowed = ['date', 'amount', 'currency', 'status', 'created_by', 'notes'];
+        if (!$hasValuatorColumn) {
+            throw new Exception('Missing column valuations.valuator. Run docs/sql/valuations_add_valuator.sql');
+        }
+
+        $allowed = ['date', 'amount', 'currency', 'status', 'created_by', 'notes', 'valuator'];
         $fields = [];
         $values = [];
         foreach ($allowed as $f) {
@@ -398,6 +428,11 @@ try {
         $res = $stmt->get_result();
         $row = $res->fetch_assoc();
         $stmt->close();
+        if ($row) {
+            if (!array_key_exists('valuator', $row)) {
+                $row['valuator'] = extract_valuator_from_notes($row['notes'] ?? '');
+            }
+        }
         echo json_encode($row ? ['data' => $row] : ['data' => null]);
         exit;
     }
@@ -413,7 +448,12 @@ try {
     $stmt->execute();
     $res = $stmt->get_result();
     $rows = [];
-    while ($r = $res->fetch_assoc()) { $rows[] = $r; }
+    while ($r = $res->fetch_assoc()) {
+        if (!array_key_exists('valuator', $r)) {
+            $r['valuator'] = extract_valuator_from_notes($r['notes'] ?? '');
+        }
+        $rows[] = $r;
+    }
     $stmt->close();
 
     echo json_encode(['data' => $rows]);
