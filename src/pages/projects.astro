@@ -9,37 +9,207 @@ import NavBarMobil from '../components/NavBarMobil.astro';
   <NavBarDesktop />
 
   <main class="pt-24 px-6 container mx-auto">
-    <header class="mb-6 flex items-center justify-between">
+    <header class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 class="text-2xl font-extrabold text-on-surface">Proyectos</h1>
-        <p class="text-sm text-on-surface-variant">Listado de proyectos (datos reales)</p>
+        <p class="text-sm text-on-surface-variant">Panel ejecutivo y listado de proyectos en tiempo real</p>
       </div>
-      <div class="hidden sm:flex items-center gap-3">
-        <input type="search" placeholder="Buscar proyecto..." class="px-3 py-2 rounded-md border border-outline-variant bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint" />
+      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+        <input id="project-search-input" type="search" placeholder="Buscar proyecto, cliente o estado..." class="w-full px-3 py-2 rounded-md border border-outline-variant bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-tint sm:w-80" />
         <a href="/projects/new" class="px-3 py-2 bg-primary text-on-primary rounded-md hover:cursor-pointer">Nuevo proyecto</a>
       </div>
     </header>
 
-    <section id="projects-summary" class="mb-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
-        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Proyectos</div>
-        <div id="kpi-project-count" class="mt-2 text-2xl font-extrabold text-on-surface">0</div>
+    <!-- KPIs ejecutivas -->
+    <section class="mb-6">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm">
+          <span class="material-symbols-outlined text-error text-3xl mb-1">warning</span>
+          <div class="text-[11px] uppercase tracking-wide text-on-surface-variant">Proyectos en riesgo</div>
+          <div id="kpi-risk-projects" class="mt-1 text-xl font-extrabold text-error">0</div>
+          <div id="kpi-risk-projects-pct" class="text-xs text-on-surface-variant">0%</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm">
+          <span class="material-symbols-outlined text-primary text-3xl mb-1">hourglass_top</span>
+          <div class="text-[11px] uppercase tracking-wide text-on-surface-variant">Próximos a cerrar</div>
+          <div id="kpi-closing-projects" class="mt-1 text-xl font-extrabold text-primary">0</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm">
+          <span class="material-symbols-outlined text-error text-3xl mb-1">trending_up</span>
+          <div class="text-[11px] uppercase tracking-wide text-on-surface-variant">Sobrecosto</div>
+          <div id="kpi-overbudget-projects" class="mt-1 text-xl font-extrabold text-error">0</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm">
+          <span class="material-symbols-outlined text-primary text-3xl mb-1">pending_actions</span>
+          <div class="text-[11px] uppercase tracking-wide text-on-surface-variant">Cobros pendientes</div>
+          <div id="kpi-pending-collections" class="mt-1 text-xl font-extrabold text-primary">$0</div>
+          <div id="kpi-pending-collections-pct" class="text-xs text-on-surface-variant">0%</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm">
+          <span class="material-symbols-outlined text-primary text-3xl mb-1">payments</span>
+          <div class="text-[11px] uppercase tracking-wide text-on-surface-variant">Anticipos entregados</div>
+          <div id="kpi-advances" class="mt-1 text-xl font-extrabold text-primary">$0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizaciones y top proyectos -->
+    <section class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <article class="xl:col-span-8 rounded-2xl border border-outline-variant/10 bg-surface p-5 shadow-[0_12px_32px_rgba(13,28,47,0.06)]">
+        <div class="flex flex-col md:flex-row gap-6">
+          <div class="flex-1 min-w-0">
+            <div class="text-xs uppercase tracking-wide text-on-surface-variant mb-2">Tendencia mensual</div>
+            <canvas id="kpi-trend-chart" height="80" class="w-full max-w-full"></canvas>
+          </div>
+          <div class="w-full md:w-72 shrink-0">
+            <div class="text-xs uppercase tracking-wide text-on-surface-variant mb-2">Top 3 proyectos por monto</div>
+            <ul id="kpi-top-projects" class="space-y-2"></ul>
+          </div>
+        </div>
       </article>
-      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
-        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total presupuestado</div>
-        <div id="kpi-total-budget" class="mt-2 text-2xl font-extrabold text-on-surface">$0</div>
+      <article class="xl:col-span-4 rounded-2xl border border-outline-variant/10 bg-surface p-5 shadow-[0_12px_32px_rgba(13,28,47,0.05)] flex flex-col gap-4">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-on-surface-variant mb-2">Promedio margen neto</div>
+          <div id="kpi-avg-margin" class="text-3xl font-extrabold text-primary">0%</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase tracking-wide text-on-surface-variant mb-2">Alertas recientes</div>
+          <ul id="kpi-recent-alerts" class="space-y-2"></ul>
+        </div>
       </article>
-      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
-        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total gastado</div>
-        <div id="kpi-total-spent" class="mt-2 text-2xl font-extrabold text-error">$0</div>
+    </section>
+
+    <section class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <article class="xl:col-span-8 rounded-2xl border border-outline-variant/10 bg-linear-to-br from-surface-container-high to-surface-container-low p-5 shadow-[0_12px_32px_rgba(13,28,47,0.06)]">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div class="text-xs uppercase tracking-wide text-on-surface-variant">Resumen financiero</div>
+            <h2 class="mt-1 text-xl font-bold text-on-surface">Vista general del portafolio</h2>
+            <p class="mt-1 text-sm text-on-surface-variant">Seguimiento de presupuesto, ejecución y cobro.</p>
+          </div>
+          <div class="rounded-xl border border-outline-variant/15 bg-surface px-3 py-2 text-right">
+            <div class="text-[11px] text-on-surface-variant">Resultado neto</div>
+            <div id="kpi-net-result" class="text-lg font-extrabold text-on-surface">$0</div>
+            <div id="kpi-net-margin" class="text-xs text-on-surface-variant">Margen 0%</div>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-shadow">
+            <span class="material-symbols-outlined text-primary text-3xl mb-1">folder_open</span>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Proyectos</div>
+            <div id="kpi-project-count" class="mt-1 text-2xl font-extrabold text-on-surface">0</div>
+          </article>
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-shadow">
+            <span class="material-symbols-outlined text-primary text-3xl mb-1">account_balance_wallet</span>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Presupuesto</div>
+            <div id="kpi-total-budget" class="mt-1 text-2xl font-extrabold text-on-surface">$0</div>
+          </article>
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-shadow">
+            <span class="material-symbols-outlined text-error text-3xl mb-1">trending_down</span>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Gastado</div>
+            <div id="kpi-total-spent" class="mt-1 text-2xl font-extrabold text-error">$0</div>
+          </article>
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-shadow">
+            <span class="material-symbols-outlined text-primary text-3xl mb-1">payments</span>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Cobrado</div>
+            <div id="kpi-total-collected" class="mt-1 text-2xl font-extrabold text-primary">$0</div>
+          </article>
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-4 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-shadow">
+            <span class="material-symbols-outlined text-on-surface text-3xl mb-1">fact_check</span>
+            <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Valuaciones</div>
+            <div id="kpi-total-valuations" class="mt-1 text-2xl font-extrabold text-on-surface">$0</div>
+          </article>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-3">
+            <div class="mb-1 flex items-center justify-between text-xs text-on-surface-variant">
+              <span>Ejecucion de presupuesto</span>
+              <span id="kpi-execution-rate">0%</span>
+            </div>
+            <div class="h-2 w-full overflow-hidden rounded-md bg-surface-dim">
+              <div id="kpi-execution-bar" class="h-2 bg-error" style="width: 0%"></div>
+            </div>
+          </article>
+          <article class="rounded-xl border border-outline-variant/10 bg-surface p-3">
+            <div class="mb-1 flex items-center justify-between text-xs text-on-surface-variant">
+              <span>Avance de cobro</span>
+              <span id="kpi-collection-rate">0%</span>
+            </div>
+            <div class="h-2 w-full overflow-hidden rounded-md bg-surface-dim">
+              <div id="kpi-collection-bar" class="h-2 bg-primary" style="width: 0%"></div>
+            </div>
+          </article>
+        </div>
       </article>
-      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
-        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total cobrado</div>
-        <div id="kpi-total-collected" class="mt-2 text-2xl font-extrabold text-primary">$0</div>
+
+      <article class="xl:col-span-4 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-5 shadow-[0_12px_32px_rgba(13,28,47,0.05)]">
+        <div class="text-xs uppercase tracking-wide text-on-surface-variant">Salud del portafolio</div>
+        <div class="mt-3 flex items-center gap-4">
+          <div id="kpi-health-ring" class="grid h-24 w-24 place-items-center rounded-full" style="background: conic-gradient(var(--color-primary) 0%, var(--color-surface-dim) 0%);">
+            <div class="grid h-16 w-16 place-items-center rounded-full bg-surface text-sm font-bold text-on-surface" id="kpi-health-value">0%</div>
+          </div>
+          <div class="text-sm text-on-surface-variant">
+            <div>Balance cobro vs gasto</div>
+            <div class="mt-1 text-xs">Indicador combinado de liquidez y control de ejecución.</div>
+          </div>
+        </div>
+        <!-- Caja para mensajes dinámicos de salud -->
+        <div id="health-message-box"></div>
+
+        <div class="mt-5 space-y-2">
+          <div class="flex items-center justify-between rounded-lg border border-outline-variant/10 bg-surface px-3 py-2 text-sm">
+            <span class="text-on-surface-variant">Activos</span>
+            <strong id="kpi-active-count" class="text-on-surface">0</strong>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-outline-variant/10 bg-surface px-3 py-2 text-sm">
+            <span class="text-on-surface-variant">Borrador</span>
+            <strong id="kpi-draft-count" class="text-on-surface">0</strong>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-outline-variant/10 bg-surface px-3 py-2 text-sm">
+            <span class="text-on-surface-variant">Pausados</span>
+            <strong id="kpi-paused-count" class="text-on-surface">0</strong>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-outline-variant/10 bg-surface px-3 py-2 text-sm">
+            <span class="text-on-surface-variant">Cerrados</span>
+            <strong id="kpi-closed-count" class="text-on-surface">0</strong>
+          </div>
+        </div>
       </article>
-      <article class="rounded-xl border border-outline-variant/10 bg-surface-container-low p-4">
-        <div class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total valuaciones</div>
-        <div id="kpi-total-valuations" class="mt-2 text-2xl font-extrabold text-on-surface">$0</div>
+
+      <article class="xl:col-span-7 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-5 shadow-[0_12px_32px_rgba(13,28,47,0.05)]">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-on-surface">Distribucion por estado</h3>
+          <span id="kpi-status-total" class="text-xs text-on-surface-variant">0 proyectos</span>
+        </div>
+
+        <div class="mt-4 space-y-3">
+          <div>
+            <div class="mb-1 flex items-center justify-between text-xs text-on-surface-variant"><span>Activos</span><span id="kpi-status-active">0</span></div>
+            <div class="h-2 w-full overflow-hidden rounded-md bg-surface-dim"><div id="kpi-status-active-bar" class="h-2 bg-(--color-success)" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="mb-1 flex items-center justify-between text-xs text-on-surface-variant"><span>Borrador</span><span id="kpi-status-draft">0</span></div>
+            <div class="h-2 w-full overflow-hidden rounded-md bg-surface-dim"><div id="kpi-status-draft-bar" class="h-2 bg-primary" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="mb-1 flex items-center justify-between text-xs text-on-surface-variant"><span>Pausados</span><span id="kpi-status-paused">0</span></div>
+            <div class="h-2 w-full overflow-hidden rounded-md bg-surface-dim"><div id="kpi-status-paused-bar" class="h-2 bg-(--color-warning)" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="mb-1 flex items-center justify-between text-xs text-on-surface-variant"><span>Cerrados</span><span id="kpi-status-closed">0</span></div>
+            <div class="h-2 w-full overflow-hidden rounded-md bg-surface-dim"><div id="kpi-status-closed-bar" class="h-2 bg-slate-500" style="width:0%"></div></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="xl:col-span-5 rounded-2xl border border-outline-variant/10 bg-surface-container-low p-5 shadow-[0_12px_32px_rgba(13,28,47,0.05)]">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-on-surface">Alertas del portafolio</h3>
+          <span class="text-xs text-on-surface-variant">Top 3</span>
+        </div>
+        <div id="projects-alert-list" class="mt-4 space-y-2"></div>
       </article>
     </section>
 
@@ -49,8 +219,11 @@ import NavBarMobil from '../components/NavBarMobil.astro';
 
   <script type="module">
     const _meta = document.querySelector('meta[name="api-base"]');
-    const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+    const _apiBase = _meta ? _meta.content : 'http://192.168.1.200/Budget/api';
     const apiUrl = `${_apiBase.replace(/\/$/, '')}/projects.php`;
+    const projectsGrid = document.getElementById('projects-grid');
+    const searchInput = document.getElementById('project-search-input');
+    let projectsState = [];
 
     async function loadProjects() {
       try {
@@ -58,39 +231,431 @@ import NavBarMobil from '../components/NavBarMobil.astro';
         if (!res.ok) throw new Error('Fetch error');
         let data = await res.json();
         if (!Array.isArray(data)) data = data.data || data.projects || data;
-        renderProjects(data);
+        projectsState = Array.isArray(data) ? data : [];
+        renderProjects(getFilteredProjects());
       } catch (e) {
         console.error('No se pudo cargar proyectos desde la API', e);
       }
     }
 
+    async function deleteProject(projectId) {
+      if (!projectId) return;
+      const confirmed = window.confirm('Quieres eliminar este proyecto? Esta accion lo marcara como eliminado.');
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch(`${apiUrl}?id=${encodeURIComponent(projectId)}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(payload.error || payload.message || 'No se pudo eliminar el proyecto');
+        }
+
+        projectsState = projectsState.filter((p) => String(p?.id) !== String(projectId));
+        renderProjects(getFilteredProjects());
+      } catch (error) {
+        console.error('No se pudo eliminar el proyecto', error);
+        alert(error instanceof Error ? error.message : 'No se pudo eliminar el proyecto');
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function getMonthKey(dateValue) {
+      const parsed = new Date(dateValue);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function buildMonthlyTrend(projects) {
+      const now = new Date();
+      const monthKeys = [];
+
+      for (let offset = 5; offset >= 0; offset -= 1) {
+        const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+        monthKeys.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+      }
+
+      const monthMap = new Map(monthKeys.map((key) => [key, { spent: 0, collected: 0 }]));
+
+      projects.forEach((project) => {
+        const key = getMonthKey(project.last_activity ?? project.lastActivity ?? project.start_date ?? project.startDate);
+        if (!key || !monthMap.has(key)) return;
+
+        const bucket = monthMap.get(key);
+        bucket.spent += Number(project.spent ?? 0);
+        bucket.collected += Number(project.valuations_collected ?? project.collected ?? 0);
+      });
+
+      const formatter = new Intl.DateTimeFormat('es', { month: 'short' });
+      return monthKeys.map((key) => {
+        const [year, month] = key.split('-').map(Number);
+        const label = formatter.format(new Date(year, month - 1, 1)).replace('.', '');
+        const values = monthMap.get(key) ?? { spent: 0, collected: 0 };
+        return {
+          label: label.charAt(0).toUpperCase() + label.slice(1),
+          spent: values.spent,
+          collected: values.collected,
+        };
+      });
+    }
+
+    function drawTrendChart(canvas, series) {
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const cssWidth = canvas.clientWidth || canvas.parentElement?.clientWidth || 640;
+      const cssHeight = 220;
+
+      canvas.style.height = `${cssHeight}px`;
+      canvas.width = Math.round(cssWidth * dpr);
+      canvas.height = Math.round(cssHeight * dpr);
+
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.scale(dpr, dpr);
+      context.clearRect(0, 0, cssWidth, cssHeight);
+
+      const padding = { top: 20, right: 18, bottom: 34, left: 18 };
+      const chartWidth = cssWidth - padding.left - padding.right;
+      const chartHeight = cssHeight - padding.top - padding.bottom;
+      const maxValue = Math.max(1, ...series.flatMap((point) => [point.spent, point.collected]));
+      const lineColor = '#cbd5e1';
+
+      context.strokeStyle = lineColor;
+      context.lineWidth = 1;
+
+      for (let step = 0; step <= 4; step += 1) {
+        const y = padding.top + (chartHeight / 4) * step;
+        context.beginPath();
+        context.moveTo(padding.left, y);
+        context.lineTo(cssWidth - padding.right, y);
+        context.stroke();
+      }
+
+      const getX = (index) => {
+        if (series.length === 1) return padding.left + chartWidth / 2;
+        return padding.left + (chartWidth / (series.length - 1)) * index;
+      };
+
+      const getY = (value) => padding.top + chartHeight - (value / maxValue) * chartHeight;
+
+      const drawLine = (values, strokeStyle, fillStyle) => {
+        context.beginPath();
+        values.forEach((value, index) => {
+          const x = getX(index);
+          const y = getY(value);
+          if (index === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        });
+        context.strokeStyle = strokeStyle;
+        context.lineWidth = 2.5;
+        context.lineJoin = 'round';
+        context.lineCap = 'round';
+        context.stroke();
+
+        values.forEach((value, index) => {
+          const x = getX(index);
+          const y = getY(value);
+          context.beginPath();
+          context.arc(x, y, 3.5, 0, Math.PI * 2);
+          context.fillStyle = fillStyle;
+          context.fill();
+          context.strokeStyle = '#ffffff';
+          context.lineWidth = 1.5;
+          context.stroke();
+        });
+      };
+
+      drawLine(series.map((point) => point.spent), '#ef4444', '#ef4444');
+      drawLine(series.map((point) => point.collected), '#2563eb', '#2563eb');
+
+      context.fillStyle = '#64748b';
+      context.font = '12px sans-serif';
+      context.textAlign = 'center';
+      series.forEach((point, index) => {
+        context.fillText(point.label, getX(index), cssHeight - 10);
+      });
+
+      context.textAlign = 'left';
+      context.fillStyle = '#ef4444';
+      context.fillRect(padding.left, 4, 10, 10);
+      context.fillStyle = '#475569';
+      context.fillText('Gastos', padding.left + 16, 13);
+      context.fillStyle = '#2563eb';
+      context.fillRect(padding.left + 72, 4, 10, 10);
+      context.fillStyle = '#475569';
+      context.fillText('Cobros', padding.left + 88, 13);
+    }
+
+    function getFilteredProjects() {
+      const q = String(searchInput?.value || '').trim().toLowerCase();
+      if (!q) return projectsState;
+
+      return projectsState.filter((p) => {
+        const name = String(p?.name || '').toLowerCase();
+        const client = String(p?.client || '').toLowerCase();
+        const status = String(p?.status ?? p?.state ?? '').toLowerCase();
+        return name.includes(q) || client.includes(q) || status.includes(q);
+      });
+    }
+
     function renderSummary(projects) {
       const fmt = new Intl.NumberFormat(undefined);
+
+      // --- KPIs ejecutivas ---
+      const riskProjects = projects.filter(p => {
+        const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
+        const spent = Number(p.spent ?? 0);
+        const collected = Number(p.valuations_collected ?? p.collected ?? 0);
+        return budget > 0 && (spent / budget) * 100 > (collected / budget) * 100;
+      });
+      const closingProjects = projects.filter(p => {
+        const progress = Number(p.progress ?? p.advance ?? 0);
+        const closingSoon = progress > 90;
+        // Si hay fecha de cierre, podrías comparar aquí
+        return closingSoon;
+      });
+      const overbudgetProjects = projects.filter(p => {
+        const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
+        const spent = Number(p.spent ?? 0);
+        return budget > 0 && spent > budget;
+      });
+      const pendingCollections = projects.reduce((acc, p) => {
+        const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
+        const collected = Number(p.valuations_collected ?? p.collected ?? 0);
+        return acc + Math.max(0, budget - collected);
+      }, 0);
+      const totalBudgetKPI = projects.reduce((acc, p) => acc + Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0), 0);
+      const pendingCollectionsPct = totalBudgetKPI > 0 ? Math.round((pendingCollections / totalBudgetKPI) * 100) : 0;
+      const advances = projects.reduce((acc, p) => acc + Number(p.advances ?? p.advance ?? 0), 0);
+
+      // KPIs
+      const kpiRiskProjects = document.getElementById('kpi-risk-projects');
+      const kpiRiskProjectsPct = document.getElementById('kpi-risk-projects-pct');
+      const kpiClosingProjects = document.getElementById('kpi-closing-projects');
+      const kpiOverbudgetProjects = document.getElementById('kpi-overbudget-projects');
+      const kpiPendingCollections = document.getElementById('kpi-pending-collections');
+      const kpiPendingCollectionsPct = document.getElementById('kpi-pending-collections-pct');
+      const kpiAdvances = document.getElementById('kpi-advances');
+
+      if (kpiRiskProjects) kpiRiskProjects.textContent = String(riskProjects.length);
+      if (kpiRiskProjectsPct) kpiRiskProjectsPct.textContent = `${projects.length > 0 ? Math.round((riskProjects.length / projects.length) * 100) : 0}%`;
+      if (kpiClosingProjects) kpiClosingProjects.textContent = String(closingProjects.length);
+      if (kpiOverbudgetProjects) kpiOverbudgetProjects.textContent = String(overbudgetProjects.length);
+      if (kpiPendingCollections) kpiPendingCollections.textContent = `$${fmt.format(pendingCollections)}`;
+      if (kpiPendingCollectionsPct) kpiPendingCollectionsPct.textContent = `${pendingCollectionsPct}%`;
+      if (kpiAdvances) kpiAdvances.textContent = `$${fmt.format(advances)}`;
+
+      // --- Top 3 proyectos por monto ---
+      const kpiTopProjects = document.getElementById('kpi-top-projects');
+      if (kpiTopProjects) {
+        const top = [...projects]
+          .sort((a, b) => (Number(b.budget ?? b.calculated_budget ?? b.budget_amount ?? 0)) - (Number(a.budget ?? a.calculated_budget ?? a.budget_amount ?? 0)))
+          .slice(0, 3);
+        kpiTopProjects.innerHTML = top.length
+          ? top.map(p => `<li class="rounded-lg border border-outline-variant/10 bg-surface px-3 py-2 flex flex-col text-left">
+              <span class="font-semibold text-on-surface">${escapeHtml(p.name ?? 'Proyecto')}</span>
+              <span class="text-xs text-on-surface-variant">Presupuesto: $${fmt.format(Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0))}</span>
+            </li>`).join('')
+          : '<li class="text-xs text-on-surface-variant">Sin datos</li>';
+      }
+
+      // --- Promedio margen neto ---
+      const avgMargin = projects.length > 0 ? Math.round(projects.reduce((acc, p) => {
+        const collected = Number(p.valuations_collected ?? p.collected ?? 0);
+        const spent = Number(p.spent ?? 0);
+        return acc + (collected > 0 ? ((collected - spent) / collected) * 100 : 0);
+      }, 0) / projects.length) : 0;
+      const kpiAvgMargin = document.getElementById('kpi-avg-margin');
+      if (kpiAvgMargin) kpiAvgMargin.textContent = `${avgMargin}%`;
+
+      // --- Alertas recientes (simulado: proyectos en riesgo, sobrecosto, etc) ---
+      const kpiRecentAlerts = document.getElementById('kpi-recent-alerts');
+      if (kpiRecentAlerts) {
+        const alerts = [];
+        riskProjects.forEach(p => alerts.push(`<li class='text-xs text-error'>${escapeHtml(p.name ?? 'Proyecto')} en riesgo</li>`));
+        overbudgetProjects.forEach(p => alerts.push(`<li class='text-xs text-error'>${escapeHtml(p.name ?? 'Proyecto')} con sobrecosto</li>`));
+        closingProjects.forEach(p => alerts.push(`<li class='text-xs text-warning'>${escapeHtml(p.name ?? 'Proyecto')} próximo a cerrar</li>`));
+        kpiRecentAlerts.innerHTML = alerts.length ? alerts.slice(0, 5).join('') : '<li class="text-xs text-on-surface-variant">Sin alertas recientes</li>';
+      }
+
+      // --- Tendencia mensual ---
+      const trendChart = document.getElementById('kpi-trend-chart');
+      if (trendChart instanceof HTMLCanvasElement) {
+        const monthlySeries = buildMonthlyTrend(projects);
+        drawTrendChart(trendChart, monthlySeries);
+      }
       const totalProjects = projects.length;
       const totalBudget = projects.reduce((acc, p) => acc + Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0), 0);
       const totalSpent = projects.reduce((acc, p) => acc + Number(p.spent ?? 0), 0);
       const totalCollected = projects.reduce((acc, p) => acc + Number(p.valuations_collected ?? p.collected ?? 0), 0);
       const totalValuations = projects.reduce((acc, p) => acc + Number(p.valuations_total ?? p.valuations_collected ?? p.collected ?? 0), 0);
+      const netResult = totalCollected - totalSpent;
+      const executionRate = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+      const collectionRate = totalBudget > 0 ? (totalCollected / totalBudget) * 100 : 0;
+      const netMargin = totalCollected > 0 ? (netResult / totalCollected) * 100 : 0;
+
+      const activeCount = projects.filter((p) => String(p.status ?? p.state ?? '').toLowerCase() === 'active').length;
+      const draftCount = projects.filter((p) => String(p.status ?? p.state ?? '').toLowerCase() === 'draft').length;
+      const pausedCount = projects.filter((p) => String(p.status ?? p.state ?? '').toLowerCase() === 'paused').length;
+      const closedCount = projects.filter((p) => String(p.status ?? p.state ?? '').toLowerCase() === 'closed').length;
+
+      const executionRateRounded = clamp(Math.round(executionRate), 0, 100);
+      const collectionRateRounded = clamp(Math.round(collectionRate), 0, 100);
+      const healthScore = clamp(Math.round((collectionRateRounded * 0.6) + ((100 - executionRateRounded) * 0.4)), 0, 100);
+
+      // Lógica de mensajes y consejos según el healthScore
+      const healthMessage = (() => {
+        if (healthScore >= 85) {
+          return {
+            msg: '¡Excelente! El portafolio muestra una salud financiera robusta. Sigue monitoreando para mantener este nivel.',
+            tip: 'Consejo: Aprovecha la buena liquidez para planear nuevas inversiones o proyectos.'
+          };
+        } else if (healthScore >= 70) {
+          return {
+            msg: 'Buena salud general, aunque hay áreas de mejora. Mantén el control sobre gastos y cobros.',
+            tip: 'Consejo: Revisa los proyectos con menor avance de cobro para evitar rezagos.'
+          };
+        } else if (healthScore >= 50) {
+          return {
+            msg: 'Atención: El portafolio muestra señales de alerta. Hay desequilibrio entre cobros y gastos.',
+            tip: 'Consejo: Refuerza la gestión de cobros y revisa los proyectos con mayor gasto.'
+          };
+        } else {
+          return {
+            msg: 'Riesgo alto: La salud financiera del portafolio es crítica. Se requiere acción inmediata.',
+            tip: 'Consejo: Prioriza la recuperación de cobros y detén gastos no esenciales.'
+          };
+        }
+      })();
+
+      // Mostrar mensaje y consejo en la tarjeta de salud
+      const msgBox = document.getElementById('health-message-box');
+      if (msgBox) {
+        msgBox.innerHTML = `
+          <div class="mt-5 rounded-lg border border-outline-variant/10 bg-surface px-4 py-3">
+            <div class="text-sm text-on-surface font-semibold mb-1">${healthMessage.msg}</div>
+            <div class="text-xs text-on-surface-variant">${healthMessage.tip}</div>
+          </div>
+        `;
+      }
 
       const kpiProjectCount = document.getElementById('kpi-project-count');
       const kpiTotalBudget = document.getElementById('kpi-total-budget');
       const kpiTotalSpent = document.getElementById('kpi-total-spent');
       const kpiTotalCollected = document.getElementById('kpi-total-collected');
       const kpiTotalValuations = document.getElementById('kpi-total-valuations');
+      const kpiNetResult = document.getElementById('kpi-net-result');
+      const kpiNetMargin = document.getElementById('kpi-net-margin');
+      const kpiExecutionRate = document.getElementById('kpi-execution-rate');
+      const kpiCollectionRate = document.getElementById('kpi-collection-rate');
+      const kpiExecutionBar = document.getElementById('kpi-execution-bar');
+      const kpiCollectionBar = document.getElementById('kpi-collection-bar');
+      const kpiHealthRing = document.getElementById('kpi-health-ring');
+      const kpiHealthValue = document.getElementById('kpi-health-value');
+      const kpiActiveCount = document.getElementById('kpi-active-count');
+      const kpiDraftCount = document.getElementById('kpi-draft-count');
+      const kpiPausedCount = document.getElementById('kpi-paused-count');
+      const kpiClosedCount = document.getElementById('kpi-closed-count');
+      const kpiStatusTotal = document.getElementById('kpi-status-total');
+      const kpiStatusActive = document.getElementById('kpi-status-active');
+      const kpiStatusDraft = document.getElementById('kpi-status-draft');
+      const kpiStatusPaused = document.getElementById('kpi-status-paused');
+      const kpiStatusClosed = document.getElementById('kpi-status-closed');
+      const kpiStatusActiveBar = document.getElementById('kpi-status-active-bar');
+      const kpiStatusDraftBar = document.getElementById('kpi-status-draft-bar');
+      const kpiStatusPausedBar = document.getElementById('kpi-status-paused-bar');
+      const kpiStatusClosedBar = document.getElementById('kpi-status-closed-bar');
+      const projectsAlertList = document.getElementById('projects-alert-list');
+
+      const activePct = totalProjects > 0 ? Math.round((activeCount / totalProjects) * 100) : 0;
+      const draftPct = totalProjects > 0 ? Math.round((draftCount / totalProjects) * 100) : 0;
+      const pausedPct = totalProjects > 0 ? Math.round((pausedCount / totalProjects) * 100) : 0;
+      const closedPct = totalProjects > 0 ? Math.round((closedCount / totalProjects) * 100) : 0;
 
       if (kpiProjectCount) kpiProjectCount.textContent = String(totalProjects);
       if (kpiTotalBudget) kpiTotalBudget.textContent = `$${fmt.format(totalBudget)}`;
       if (kpiTotalSpent) kpiTotalSpent.textContent = `$${fmt.format(totalSpent)}`;
       if (kpiTotalCollected) kpiTotalCollected.textContent = `$${fmt.format(totalCollected)}`;
       if (kpiTotalValuations) kpiTotalValuations.textContent = `$${fmt.format(totalValuations)}`;
+      if (kpiNetResult) {
+        kpiNetResult.textContent = `$${fmt.format(netResult)}`;
+        kpiNetResult.classList.toggle('text-error', netResult < 0);
+        kpiNetResult.classList.toggle('text-primary', netResult >= 0);
+      }
+      if (kpiNetMargin) kpiNetMargin.textContent = `Margen ${Math.round(netMargin)}%`;
+      if (kpiExecutionRate) kpiExecutionRate.textContent = `${executionRateRounded}%`;
+      if (kpiCollectionRate) kpiCollectionRate.textContent = `${collectionRateRounded}%`;
+      if (kpiExecutionBar) kpiExecutionBar.style.width = `${executionRateRounded}%`;
+      if (kpiCollectionBar) kpiCollectionBar.style.width = `${collectionRateRounded}%`;
+      if (kpiHealthValue) kpiHealthValue.textContent = `${healthScore}%`;
+      if (kpiHealthRing) kpiHealthRing.style.background = `conic-gradient(var(--color-primary) ${healthScore}%, var(--color-surface-dim) 0)`;
+
+      if (kpiActiveCount) kpiActiveCount.textContent = String(activeCount);
+      if (kpiDraftCount) kpiDraftCount.textContent = String(draftCount);
+      if (kpiPausedCount) kpiPausedCount.textContent = String(pausedCount);
+      if (kpiClosedCount) kpiClosedCount.textContent = String(closedCount);
+
+      if (kpiStatusTotal) kpiStatusTotal.textContent = `${totalProjects} proyectos`;
+      if (kpiStatusActive) kpiStatusActive.textContent = `${activeCount} · ${activePct}%`;
+      if (kpiStatusDraft) kpiStatusDraft.textContent = `${draftCount} · ${draftPct}%`;
+      if (kpiStatusPaused) kpiStatusPaused.textContent = `${pausedCount} · ${pausedPct}%`;
+      if (kpiStatusClosed) kpiStatusClosed.textContent = `${closedCount} · ${closedPct}%`;
+      if (kpiStatusActiveBar) kpiStatusActiveBar.style.width = `${activePct}%`;
+      if (kpiStatusDraftBar) kpiStatusDraftBar.style.width = `${draftPct}%`;
+      if (kpiStatusPausedBar) kpiStatusPausedBar.style.width = `${pausedPct}%`;
+      if (kpiStatusClosedBar) kpiStatusClosedBar.style.width = `${closedPct}%`;
+
+      if (projectsAlertList) {
+        const risks = [...projects]
+          .map((p) => {
+            const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
+            const spent = Number(p.spent ?? 0);
+            const collected = Number(p.valuations_collected ?? p.collected ?? 0);
+            const execution = budget > 0 ? (spent / budget) * 100 : 0;
+            const collection = budget > 0 ? (collected / budget) * 100 : 0;
+            const risk = (execution - collection);
+            return { id: p.id, name: p.name || `Proyecto #${p.id}`, risk, execution, collection };
+          })
+          .sort((a, b) => b.risk - a.risk)
+          .slice(0, 3)
+          .filter((x) => x.risk > 0);
+
+        if (!risks.length) {
+          projectsAlertList.innerHTML = '<div class="rounded-lg border border-outline-variant/10 bg-surface px-3 py-2 text-sm text-on-surface-variant">No hay alertas criticas en la vista actual.</div>';
+        } else {
+          projectsAlertList.innerHTML = risks.map((r) => `
+            <div class="rounded-lg border border-outline-variant/10 bg-surface px-3 py-2">
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-sm font-medium text-on-surface">${escapeHtml(r.name)}</div>
+                <span class="rounded-full bg-error/10 px-2 py-0.5 text-xs font-semibold text-error">Riesgo ${Math.round(r.risk)}%</span>
+              </div>
+              <div class="mt-1 text-xs text-on-surface-variant">Ejecucion ${Math.round(r.execution)}% · Cobro ${Math.round(r.collection)}%</div>
+            </div>
+          `).join('');
+        }
+      }
     }
 
     function renderProjects(projects) {
       const fmt = new Intl.NumberFormat(undefined);
-      const container = document.getElementById('projects-grid');
-      if (!container) return;
+      if (!projectsGrid) return;
       renderSummary(projects);
-      container.innerHTML = projects.map(p => {
+      projectsGrid.innerHTML = projects.map(p => {
         const budget = Number(p.budget ?? p.calculated_budget ?? p.budget_amount ?? 0);
         const collected = Number(p.valuations_collected ?? p.collected ?? 0);
         const spent = Number(p.spent ?? 0);
@@ -151,7 +716,7 @@ import NavBarMobil from '../components/NavBarMobil.astro';
                 <a href="/projects/${p.id}/edit" aria-label="Editar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
                   <span class="material-symbols-outlined">edit</span>
                 </a>
-                <button aria-label="Eliminar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
+                <button type="button" data-delete-project-id="${p.id}" aria-label="Eliminar" class="text-[12px] text-primary flex items-center justify-center p-1 cursor-pointer hover:transform hover:scale-105 transition-transform">
                   <span class="material-symbols-outlined">delete</span>
                 </button>
               </div>
@@ -160,6 +725,20 @@ import NavBarMobil from '../components/NavBarMobil.astro';
         `.trim();
       }).join('\n');
     }
+
+    projectsGrid?.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const button = target.closest('button[data-delete-project-id]');
+      if (!(button instanceof HTMLButtonElement)) return;
+
+      const projectId = button.getAttribute('data-delete-project-id');
+      void deleteProject(projectId);
+    });
+
+    searchInput?.addEventListener('input', () => {
+      renderProjects(getFilteredProjects());
+    });
 
     // Cargar al inicializar la página
     loadProjects();

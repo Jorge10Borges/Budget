@@ -1,24 +1,30 @@
 ---
 ---
+
 <nav class="hidden md:flex items-center justify-between w-full bg-surface-container-low px-6 py-3 shadow-sm border-b border-outline-variant">
-	<div class="group flex items-center gap-3">
-		<div class="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center p-1">
-			<img
-				src="/logo.svg"
-				alt="DevJorge"
-				class="w-full h-full object-contain group-hover:scale-105 transition-transform"
-				loading="eager"
-				decoding="async"
-			/>
+	<div class="flex items-center gap-4">
+		<div class="flex flex-col items-center justify-center">
+			<div class="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center p-1">
+				<img
+					src="/logo.svg"
+					alt="Budget"
+					class="w-full h-full object-contain group-hover:scale-105 transition-transform"
+					loading="eager"
+					decoding="async"
+				/>
+			</div>
+			<span id="brand-or-company" class="text-xs font-semibold text-on-surface-variant mt-1">Empresa</span>
 		</div>
-		<span id="brand-or-company" class="text-lg font-bold text-primary">Jorge Borges</span>
+		<div class="flex flex-col justify-center ml-2">
+			<span class="text-xl font-extrabold text-primary leading-tight">Budget</span>
+		</div>
 	</div>
 	<div class="flex items-center gap-6">
-		<a href="/" data-nav="/" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Dashboard</a>
-		<a href="/projects" data-nav="/projects" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Proyectos</a>
-		<div id="auth-user-box" class="hidden items-center gap-3 rounded-lg border border-outline-variant/60 bg-surface px-3 py-1.5">
-			<div class="text-right leading-tight">
-				<div id="auth-user-name" class="text-xs font-semibold text-on-surface">Usuario</div>
+		<a href="/" data-nav="/" class="px-3 py-1.5 rounded-md text-sm font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors nav-link">Inicio</a>
+		<a href="/projects" data-nav="/projects" class="px-3 py-1.5 rounded-md text-sm font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors nav-link">Proyectos</a>
+		<div id="auth-user-box" class="flex items-center gap-3 rounded-lg border border-outline-variant/60 bg-surface px-3 py-1.5">
+			<div class="flex flex-col text-left leading-tight">
+				<div id="auth-user-name" class="text-sm font-semibold text-on-surface">Usuario</div>
 				<div id="auth-user-role" class="text-[11px] uppercase tracking-wide text-on-surface-variant">rol</div>
 			</div>
 			<button id="logout-btn" type="button" class="inline-flex items-center gap-1 rounded-md border border-outline-variant px-2.5 py-1 text-xs font-semibold text-on-surface hover:bg-surface-container transition">
@@ -57,12 +63,12 @@
 					const data = payload && payload.data ? payload.data : null;
 					if (!data) return;
 
-					if (companyName) {
-						companyName.textContent = data.company?.trade_name || data.company?.legal_name || 'Budget';
-					}
-					if (userName) userName.textContent = data.user?.full_name || 'Usuario';
-					if (userRole) userRole.textContent = data.user?.role || 'editor';
-					if (userBox) userBox.classList.remove('hidden');
+					   if (companyName) {
+						   companyName.textContent = data.company?.trade_name || data.company?.legal_name || 'Empresa';
+					   }
+					   if (userName) userName.textContent = data.user?.full_name || 'Usuario';
+					   if (userRole) userRole.textContent = data.user?.role || 'editor';
+					   if (userBox) userBox.classList.remove('hidden');
 				});
 
 			logoutBtn?.addEventListener('click', async () => {
