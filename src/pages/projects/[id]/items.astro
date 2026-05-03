@@ -273,6 +273,7 @@ export async function getStaticPaths() { return []; }
       try {
         const response = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(projectId)}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: nextStatus })
         });
@@ -358,7 +359,7 @@ export async function getStaticPaths() { return []; }
       if (!pid) return; // nothing to do
 
       try {
-        const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('Project fetch failed');
         const data = await res.json();
         const project = Array.isArray(data) ? data[0] : (data.data || data.project || data);
@@ -456,7 +457,7 @@ export async function getStaticPaths() { return []; }
 
     async function loadItems() {
       try {
-        const res = await fetch(apiUrl, { cache: 'no-store' });
+        const res = await fetch(apiUrl, { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('Fetch failed');
         let data = await res.json();
         const items = Array.isArray(data) ? data : (data.data || []);
@@ -625,7 +626,7 @@ export async function getStaticPaths() { return []; }
           const ok = await confirmDialog('¿Eliminar esta partida del proyecto?');
           if (!ok) return;
           try {
-            const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
             if (!resp.ok) throw new Error('Delete failed: ' + resp.status);
             await resp.json();
             // eliminar fila y recalcular total
@@ -694,6 +695,7 @@ export async function getStaticPaths() { return []; }
           try {
             const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php`, {
               method: 'PUT',
+              credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id: itemId, qty: newQty, unit_cost: newUnit })
             });
@@ -772,7 +774,7 @@ export async function getStaticPaths() { return []; }
       if (content) content.innerHTML = '<div class="text-on-surface-variant">Cargando partidas...</div>';
       console.log('[items] fetching items from', itemsApiUrl);
       try {
-        const res = await fetch(itemsApiUrl, { cache: 'no-store' });
+        const res = await fetch(itemsApiUrl, { cache: 'no-store', credentials: 'include' });
         console.log('[items] items fetch status', res.status);
         if (!res.ok) throw new Error('Fetch failed: ' + res.status);
         const data = await res.json();
@@ -863,6 +865,7 @@ export async function getStaticPaths() { return []; }
               try {
                 const createRes = await fetch(itemsApiUrl, {
                   method: 'POST',
+                  credentials: 'include',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(payload)
                 });
@@ -900,6 +903,7 @@ export async function getStaticPaths() { return []; }
               try {
                 const resp = await fetch(`${_apiBase.replace(/\/$/, '')}/project_items.php`, {
                   method: 'POST',
+                  credentials: 'include',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ project_id: projectId, item_id: itemId, qty, unit_cost: unitCost })
                 });

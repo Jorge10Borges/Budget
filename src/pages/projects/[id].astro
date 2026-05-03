@@ -57,7 +57,7 @@ export async function getStaticPaths() {
         return;
       }
       try {
-        const res = await fetch(makeApiUrl(id), { cache: 'no-store' });
+        const res = await fetch(makeApiUrl(id), { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         const p = Array.isArray(data) ? data[0] : (data.data || data.project || data);
@@ -309,6 +309,7 @@ export async function getStaticPaths() {
             try {
               const response = await fetch(makeApiUrl(p.id), {
                 method: 'PUT',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: nextStatus })
               });
@@ -385,7 +386,7 @@ export async function getStaticPaths() {
           const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
           const id = p.id ?? p.id ?? getProjectIdFromDOMorURL();
           if (!id) return;
-          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/kpis.php?project_id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/kpis.php?project_id=${encodeURIComponent(id)}`, { cache: 'no-store', credentials: 'include' });
           if (!res.ok) throw new Error('KPIs fetch failed');
           const payload = await res.json();
           const d = payload.data || {};

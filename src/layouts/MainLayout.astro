@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Loader from "../components/Loader.astro";
 
 const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://192.168.1.200/Budget/api";
 ---
@@ -17,14 +18,27 @@ const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://192.168.1.20
 		<title>Budget</title>
 	</head>
 	<body class="pb-20 md:pb-0">
+		<div id="app-loader" class="fixed inset-0 z-50">
+			<Loader text="Cargando..." />
+		</div>
+		<div id="app-shell" style="visibility: hidden;">
     <slot />
+		</div>
 		<script>
 			(function () {
+				function showApp() {
+					var shell = document.getElementById('app-shell');
+					var loader = document.getElementById('app-loader');
+					if (shell) shell.style.visibility = 'visible';
+					if (loader) loader.style.display = 'none';
+				}
+
 				try {
 					const path = (location.pathname || '/').replace(/\/$/, '') || '/';
 					const publicPaths = new Set(['/', '/login']);
 					const shouldCheckSession = path === '/login' || !publicPaths.has(path);
 					if (!shouldCheckSession) {
+						showApp();
 						return;
 					}
 					const meta = document.querySelector('meta[name="api-base"]') as HTMLMetaElement | null;
@@ -44,21 +58,28 @@ const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://192.168.1.20
 							if (isAuthenticated) {
 								if (path === '/login') {
 									location.replace('/projects');
+									return;
 								}
+								showApp();
 								return;
 							}
 
 							if (!publicPaths.has(path)) {
 								location.replace('/login?next=' + encodeURIComponent(location.pathname + location.search));
+								return;
 							}
+
+							showApp();
 						})
 						.catch(function () {
 							if (!publicPaths.has(path)) {
 								location.replace('/login?next=' + encodeURIComponent(location.pathname + location.search));
+								return;
 							}
+							showApp();
 						});
 				} catch (e) {
-					/* ignore guard errors */
+					showApp();
 				}
 			})();
 		</script>

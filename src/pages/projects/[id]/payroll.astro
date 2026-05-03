@@ -435,7 +435,7 @@ export async function getStaticPaths() { return []; }
       project_id: String(projectId),
       q: String(searchTerm || ''),
     });
-    const res = await fetch(`${apiBase}/payroll_employees.php?${params.toString()}`, { cache: 'no-store' });
+    const res = await fetch(`${apiBase}/payroll_employees.php?${params.toString()}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) {
       throw new Error('No se pudo cargar la tabla global de empleados');
     }
@@ -509,6 +509,7 @@ export async function getStaticPaths() { return []; }
 
         const res = await fetch(`${apiBase}/payroll_employees.php`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
@@ -548,7 +549,7 @@ export async function getStaticPaths() { return []; }
   async function loadProjectName() {
     if (!projectId || !projectNameEl) return;
     try {
-      const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store' });
+      const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store', credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json();
       const project = Array.isArray(data) ? data[0] : (data.data || data.project || data);
@@ -561,7 +562,7 @@ export async function getStaticPaths() { return []; }
   }
 
   async function loadEmployees() {
-    const res = await fetch(`${apiBase}/payroll_employees.php?project_id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store' });
+    const res = await fetch(`${apiBase}/payroll_employees.php?project_id=${encodeURIComponent(String(projectId))}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) throw new Error('No se pudieron cargar empleados');
     const data = await res.json();
     employees = (Array.isArray(data?.data) ? data.data : []).slice().sort((a, b) => {
@@ -584,7 +585,7 @@ export async function getStaticPaths() { return []; }
   async function loadAttendance() {
     const range = weekRangeFromDate(weekPicker.value || dateValue(currentWeekDate));
     const url = `${apiBase}/payroll_attendance.php?project_id=${encodeURIComponent(String(projectId))}&start_date=${encodeURIComponent(range.start)}&end_date=${encodeURIComponent(range.end)}`;
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) throw new Error('No se pudo cargar asistencia');
     const data = await res.json();
 
@@ -747,6 +748,7 @@ export async function getStaticPaths() { return []; }
 
     const res = await fetch(`${apiBase}/payroll_attendance.php`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
@@ -873,6 +875,7 @@ export async function getStaticPaths() { return []; }
     try {
       const res = await fetch(`${apiBase}/payroll_employees.php${isEdit ? `?id=${encodeURIComponent(String(employeeId))}` : ''}`, {
         method: isEdit ? 'PUT' : 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(isEdit ? { ...payload, id: employeeId } : payload),
       });
@@ -939,6 +942,7 @@ export async function getStaticPaths() { return []; }
     try {
       const res = await fetch(`${apiBase}/payroll_employees.php?id=${encodeURIComponent(String(employeeDeleteTargetId))}&project_id=${encodeURIComponent(String(projectId))}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

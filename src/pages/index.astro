@@ -13,7 +13,7 @@ import Footer from '../components/Footer.astro';
 			<div class="pointer-events-none absolute -top-16 -right-12 h-52 w-52 rounded-full bg-primary/8 blur-2xl"></div>
 			<div class="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-sky-500/10 blur-2xl"></div>
 
-			<div class="container mx-auto px-6 pt-28 pb-20 md:pt-32 md:pb-24">
+			<div class="container mx-auto px-6 pt-28 pb-20 md:pt-32 md:pb-24 grid grid-cols-2 items-center gap-6">
 				<div class="max-w-3xl">
 					<div class="inline-flex items-center gap-2 rounded-full border border-outline-variant/50 bg-surface px-3 py-1 text-xs text-on-surface-variant shadow-sm">
 						<span class="material-symbols-outlined text-sm text-primary">work</span>
@@ -49,6 +49,15 @@ import Footer from '../components/Footer.astro';
 							Entrar al sistema
 						</a>
 					</div>
+				</div>
+				<div>
+					<img
+						src="/dashboard-preview.png"
+						alt="Vista previa del dashboard de Budget"
+						class="w-full rounded-lg border border-outline-variant/40 bg-surface-container-low p-4 shadow-sm"
+						loading="lazy"
+						decoding="async"
+					/>
 				</div>
 			</div>
 		</section>

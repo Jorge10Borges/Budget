@@ -427,7 +427,7 @@ export async function getStaticPaths() { return []; }
     async function loadProject() {
       if (!projectId || !pageRoot) return;
       try {
-        const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('No se pudo cargar el proyecto');
         const payload = await res.json();
         const project = Array.isArray(payload) ? payload[0] : (payload.data || payload.project || payload);
@@ -446,7 +446,7 @@ export async function getStaticPaths() { return []; }
 
     async function loadFormDependencies() {
       if (!projectId) return;
-      const itemsRes = await fetch(`${apiBase}/project_items.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+      const itemsRes = await fetch(`${apiBase}/project_items.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store', credentials: 'include' });
       const itemsPayload = itemsRes.ok ? await itemsRes.json() : { data: [] };
       projectItems = Array.isArray(itemsPayload?.data) ? itemsPayload.data : [];
       populateSelect(itemSelect, projectItems.map((item) => ({
@@ -462,7 +462,7 @@ export async function getStaticPaths() { return []; }
       populateSelect(categorySelect, [], 'Cargando categorías...');
 
       try {
-        const categoriesRes = await fetch(`${apiBase}/expense_categories.php`, { cache: 'no-store' });
+        const categoriesRes = await fetch(`${apiBase}/expense_categories.php`, { cache: 'no-store', credentials: 'include' });
         if (!categoriesRes.ok) throw new Error('No se pudieron cargar las categorías');
         const categoriesPayload = await categoriesRes.json();
         categories = Array.isArray(categoriesPayload?.data) ? categoriesPayload.data : [];
@@ -486,7 +486,7 @@ export async function getStaticPaths() { return []; }
       if (!projectId || !expensesRoot) return;
       expensesRoot.innerHTML = '<div class="text-on-surface-variant">Cargando gastos...</div>';
       try {
-        const res = await fetch(`${apiBase}/expenses.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        const res = await fetch(`${apiBase}/expenses.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('No se pudieron cargar los gastos');
         const payload = await res.json();
         expenses = Array.isArray(payload?.data) ? payload.data : [];
@@ -610,7 +610,7 @@ export async function getStaticPaths() { return []; }
       }
 
       try {
-        const res = await fetch(`${apiBase}/expenses.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const res = await fetch(`${apiBase}/expenses.php?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(payload.error || payload.message || 'No se pudo eliminar el gasto');
@@ -657,6 +657,7 @@ export async function getStaticPaths() { return []; }
       try {
         const res = await fetch(url, {
           method,
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });

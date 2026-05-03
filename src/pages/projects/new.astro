@@ -96,7 +96,7 @@ export const prerender = false;
     const submitButton = document.getElementById('submit-button');
     const feedback = document.getElementById('form-feedback');
     const meta = document.querySelector('meta[name="api-base"]');
-    const apiBase = meta ? meta.content : 'http://localhost/Budget/api';
+    const apiBase = meta ? meta.content : 'http://192.168.1.200/Budget/api';
     const apiUrl = `${apiBase.replace(/\/$/, '')}/projects.php`;
 
     function showFeedback(message, variant = 'error') {
@@ -145,6 +145,7 @@ export const prerender = false;
       try {
         const response = await fetch(apiUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });

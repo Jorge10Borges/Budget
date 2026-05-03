@@ -6,6 +6,7 @@ import "../../../../../styles/global.css";
 
 <head>
   <meta charset="utf-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
 </head>
 
 <main class="print-shell">
@@ -213,7 +214,7 @@ import "../../../../../styles/global.css";
 
 <script type="module">
   const meta = document.querySelector('meta[name="api-base"]');
-  const apiBase = meta ? meta.content : 'http://localhost/Budget/api';
+  const apiBase = meta ? meta.content : 'http://192.168.1.200/Budget/api';
   const base = apiBase.replace(/\/$/, '');
 
   const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -250,7 +251,7 @@ import "../../../../../styles/global.css";
   }
 
   async function fetchValuation() {
-    const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) return null;
     const payload = await res.json().catch(() => ({}));
     if (payload && Array.isArray(payload.data)) return payload.data[0] || null;
@@ -260,7 +261,7 @@ import "../../../../../styles/global.css";
 
   async function fetchProjectName() {
     if (!projectId) return null;
-    const res = await fetch(`${base}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+    const res = await fetch(`${base}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) return null;
     const payload = await res.json().catch(() => ({}));
     const first = Array.isArray(payload) ? payload[0] : (Array.isArray(payload?.data) ? payload.data[0] : payload?.data || null);
@@ -268,7 +269,7 @@ import "../../../../../styles/global.css";
   }
 
   async function fetchItems() {
-    const res = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    const res = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) return [];
     const payload = await res.json().catch(() => ({}));
     if (payload && Array.isArray(payload.data)) return payload.data;

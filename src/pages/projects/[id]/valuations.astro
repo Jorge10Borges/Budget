@@ -114,7 +114,7 @@ export async function getStaticPaths() { return []; }
       if (!pid) return;
       const tryFetch = async (paramName) => {
         try {
-          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?${paramName}=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+          const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?${paramName}=${encodeURIComponent(pid)}`, { cache: 'no-store', credentials: 'include' });
           if (!res.ok) return null;
           const data = await res.json();
           const first = Array.isArray(data) ? data[0] : (data.data && data.data[0]) ? data.data[0] : null;
@@ -128,7 +128,7 @@ export async function getStaticPaths() { return []; }
       if (!name) name = await tryFetch('project_id');
       if (!name) {
         try {
-          const resAll = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php`, { cache: 'no-store' });
+          const resAll = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php`, { cache: 'no-store', credentials: 'include' });
           if (resAll.ok) {
             const dataAll = await resAll.json();
             const list = Array.isArray(dataAll) ? dataAll : (dataAll.data || []);
@@ -191,8 +191,8 @@ export async function getStaticPaths() { return []; }
         const base = _apiBase.replace(/\/$/, '');
 
         const [projectRes, collectionsRes] = await Promise.all([
-          fetch(`${base}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store' }),
-          fetch(`${base}/project_collections.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store' })
+          fetch(`${base}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store', credentials: 'include' }),
+          fetch(`${base}/project_collections.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store', credentials: 'include' })
         ]);
 
         if (!projectRes.ok) return;
@@ -267,7 +267,7 @@ export async function getStaticPaths() { return []; }
       if (!pid) { valuationsRoot.innerHTML = '<div class="text-error">Proyecto no especificado</div>'; return; }
       try {
         const base = _apiBase.replace(/\/$/, '');
-        const res = await fetch(`${base}/valuations.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        const res = await fetch(`${base}/valuations.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         const items = (data && data.data) ? data.data : [];
@@ -355,7 +355,7 @@ export async function getStaticPaths() { return []; }
       }
 
       try {
-        const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(payload.error || payload.message || 'No se pudo eliminar la valuación');

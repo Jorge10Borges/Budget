@@ -345,7 +345,7 @@ export async function getStaticPaths() { return []; }
     };
 
     try {
-      const res = await fetch(`${base}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+      const res = await fetch(`${base}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store', credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         const first = extractFirst(data);
@@ -364,7 +364,7 @@ export async function getStaticPaths() { return []; }
     valuedQuantities = {};
     excludedUiIds = [];
 
-    const res = await fetch(`${base}/project_items.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+    const res = await fetch(`${base}/project_items.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) throw new Error('No se pudieron cargar las partidas del proyecto');
     const data = await res.json();
     const list = Array.isArray(data) ? data : (data.data || []);
@@ -380,7 +380,7 @@ export async function getStaticPaths() { return []; }
   async function loadExistingValuation() {
     if (!valuationId) throw new Error('No se encontró el id de la valuación en la ruta');
 
-    const valuationRes = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    const valuationRes = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, { cache: 'no-store', credentials: 'include' });
     if (!valuationRes.ok) throw new Error('No se pudo cargar la valuación');
     const valuationPayload = await valuationRes.json();
     const valuation = valuationPayload?.data || null;
@@ -396,7 +396,7 @@ export async function getStaticPaths() { return []; }
     if (valuatorInput) valuatorInput.value = String(valuation.valuator || '').trim() || parsedNotes.valuator || '';
     if (descInput) descInput.value = parsedNotes.observation || '';
 
-    const itemsRes = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store' });
+    const itemsRes = await fetch(`${base}/valuation_items.php?valuation_id=${encodeURIComponent(valuationId)}`, { cache: 'no-store', credentials: 'include' });
     if (!itemsRes.ok) throw new Error('No se pudieron cargar los ítems de la valuación');
     const itemsPayload = await itemsRes.json();
     const items = Array.isArray(itemsPayload?.data) ? itemsPayload.data : [];
@@ -629,6 +629,7 @@ export async function getStaticPaths() { return []; }
     try {
       const res = await fetch(`${base}/valuations.php?id=${encodeURIComponent(valuationId)}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });

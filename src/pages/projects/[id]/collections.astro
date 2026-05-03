@@ -170,7 +170,7 @@ export async function getStaticPaths() { return []; }
     const pageRoot = document.getElementById('project-name');
     const projectId = pageRoot ? pageRoot.dataset.projectId : null;
     const _meta = document.querySelector('meta[name="api-base"]');
-    const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+    const _apiBase = _meta ? _meta.content : 'http://192.168.1.200/Budget/api';
     const apiBase = _apiBase.replace(/\/$/, '');
 
     const collectionsRoot = document.getElementById('collections-root');
@@ -263,7 +263,10 @@ export async function getStaticPaths() { return []; }
     async function loadProjectName() {
       if (!pageRoot || !projectId) return;
       try {
-        const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        const res = await fetch(`${apiBase}/projects.php?id=${encodeURIComponent(projectId)}`, {
+          cache: 'no-store',
+          credentials: 'include'
+        });
         if (!res.ok) return;
         const payload = await res.json();
         const p = payload?.data || null;
@@ -475,7 +478,10 @@ export async function getStaticPaths() { return []; }
           if (!confirmed) return;
 
           try {
-            const res = await fetch(`${apiBase}/project_collections.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            const res = await fetch(`${apiBase}/project_collections.php?id=${encodeURIComponent(id)}`, {
+              method: 'DELETE',
+              credentials: 'include'
+            });
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(payload.error || payload.message || 'No se pudo eliminar el cobro');
             await loadCollections();
@@ -492,7 +498,10 @@ export async function getStaticPaths() { return []; }
       collectionsRoot.innerHTML = '<div class="text-on-surface-variant">Cargando cobros...</div>';
 
       try {
-        const res = await fetch(`${apiBase}/project_collections.php?project_id=${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+        const res = await fetch(`${apiBase}/project_collections.php?project_id=${encodeURIComponent(projectId)}`, {
+          cache: 'no-store',
+          credentials: 'include'
+        });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(payload.error || payload.message || 'No se pudieron cargar los cobros');
 
@@ -572,6 +581,7 @@ export async function getStaticPaths() { return []; }
 
         const res = await fetch(url, {
           method,
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });

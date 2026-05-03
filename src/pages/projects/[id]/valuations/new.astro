@@ -175,7 +175,7 @@ export async function getStaticPaths() { return []; }
 
 <script type="module">
   const _meta = document.querySelector('meta[name="api-base"]');
-  const _apiBase = _meta ? _meta.content : 'http://localhost/Budget/api';
+  const _apiBase = _meta ? _meta.content : 'http://192.168.1.200/Budget/api';
   const projectNameEl = document.getElementById('project-name');
 
   async function loadProjectName() {
@@ -195,7 +195,10 @@ export async function getStaticPaths() { return []; }
 
     try {
       // 1) Try ?id=
-      let res = await fetch(`${base}/projects.php?id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+      let res = await fetch(`${base}/projects.php?id=${encodeURIComponent(pid)}`, {
+        cache: 'no-store',
+        credentials: 'include'
+      });
       if (res.ok) {
         const data = await res.json();
         const first = extractFirst(data);
@@ -208,7 +211,10 @@ export async function getStaticPaths() { return []; }
 
     try {
       // 2) Try ?project_id=
-      let res2 = await fetch(`${base}/projects.php?project_id=${encodeURIComponent(pid)}`, { cache: 'no-store' });
+      let res2 = await fetch(`${base}/projects.php?project_id=${encodeURIComponent(pid)}`, {
+        cache: 'no-store',
+        credentials: 'include'
+      });
       if (res2.ok) {
         const data2 = await res2.json();
         const first2 = extractFirst(data2);
@@ -221,7 +227,10 @@ export async function getStaticPaths() { return []; }
 
     try {
       // 3) Fallback: fetch all and search locally
-      let res3 = await fetch(`${base}/projects.php`, { cache: 'no-store' });
+      let res3 = await fetch(`${base}/projects.php`, {
+        cache: 'no-store',
+        credentials: 'include'
+      });
       if (res3.ok) {
         const all = await res3.json();
         const arr = Array.isArray(all) ? all : (all.data && Array.isArray(all.data)) ? all.data : [];
@@ -406,7 +415,9 @@ export async function getStaticPaths() { return []; }
     try {
       const base = _apiBase.replace(/\/$/, '');
       // 1) obtener todas las partidas del proyecto
-      const res = await fetch(`${base}/project_items.php?project_id=${encodeURIComponent(projectId)}`);
+      const res = await fetch(`${base}/project_items.php?project_id=${encodeURIComponent(projectId)}`, {
+        credentials: 'include'
+      });
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.data || []);
@@ -421,7 +432,9 @@ export async function getStaticPaths() { return []; }
 
       // 2) cargar cantidades reales ya valuadas del proyecto (todas las valuaciones)
       try {
-        const r2 = await fetch(`${base}/valuation_items.php?project_id=${encodeURIComponent(projectId)}`);
+        const r2 = await fetch(`${base}/valuation_items.php?project_id=${encodeURIComponent(projectId)}`, {
+          credentials: 'include'
+        });
         if (r2.ok) {
           const d2 = await r2.json();
           const list2 = Array.isArray(d2) ? d2 : (d2.data || []);
@@ -720,6 +733,7 @@ export async function getStaticPaths() { return []; }
       const base = _apiBase.replace(/\/$/, '');
       const res = await fetch(`${base}/valuations.php`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
