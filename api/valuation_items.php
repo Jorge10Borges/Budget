@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -12,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 try {
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
+
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed']);
@@ -27,11 +33,12 @@ try {
                        SUM(COALESCE(vi.qty, 0)) AS qty_valued
                 FROM valuation_items vi
                 INNER JOIN valuations v ON v.id = vi.valuation_id
-                WHERE v.project_id = ?
+                INNER JOIN projects p ON p.id = v.project_id
+                WHERE v.project_id = ? AND p.company_id = ?
                 GROUP BY vi.project_item_id
                 ORDER BY vi.project_item_id ASC";
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('i', $project_id);
+            $stmt->bind_param('ii', $project_id, $company_id);
         $stmt->execute();
         $res = $stmt->get_result();
         $rows = [];
@@ -48,10 +55,12 @@ try {
                 FROM valuation_items vi
                 LEFT JOIN project_items pi ON pi.id = vi.project_item_id
                 LEFT JOIN items i ON i.id = pi.item_id
-                WHERE vi.valuation_id = ?
+                INNER JOIN valuations v ON v.id = vi.valuation_id
+                INNER JOIN projects p ON p.id = v.project_id
+                WHERE vi.valuation_id = ? AND p.company_id = ?
                 ORDER BY vi.id ASC";
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('i', $valuation_id);
+            $stmt->bind_param('ii', $valuation_id, $company_id);
         $stmt->execute();
         $res = $stmt->get_result();
         $rows = [];
@@ -62,8 +71,13 @@ try {
     }
 
     if ($project_item_id) {
-        $stmt = $mysqli->prepare("SELECT * FROM valuation_items WHERE project_item_id = ? ORDER BY id ASC");
-        $stmt->bind_param('i', $project_item_id);
+        $stmt = $mysqli->prepare("SELECT vi.*
+                      FROM valuation_items vi
+                      INNER JOIN valuations v ON v.id = vi.valuation_id
+                      INNER JOIN projects p ON p.id = v.project_id
+                      WHERE vi.project_item_id = ? AND p.company_id = ?
+                      ORDER BY vi.id ASC");
+        $stmt->bind_param('ii', $project_item_id, $company_id);
         $stmt->execute();
         $res = $stmt->get_result();
         $rows = [];

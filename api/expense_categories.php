@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -18,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
+    require_auth($mysqli);
     $sql = "SELECT id, code, name, is_active, sort_order FROM expense_categories WHERE is_active = 1 ORDER BY sort_order ASC, name ASC";
     $res = $mysqli->query($sql);
 

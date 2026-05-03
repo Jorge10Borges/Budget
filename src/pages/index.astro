@@ -2,12 +2,198 @@
 import MainLayout from '../layouts/MainLayout.astro';
 import NavBarDesktop from '../components/NavBarDesktop.astro';
 import NavBarMobil from '../components/NavBarMobil.astro';
+import Footer from '../components/Footer.astro';
 ---
 
 <MainLayout>
   <NavBarDesktop />
-	<main class="min-h-dvh">
-		<h1 class="text-amber-400">Astro</h1>
+
+	<main class="min-h-dvh bg-surface text-on-surface">
+		<section class="relative overflow-hidden border-b border-outline-variant/40 bg-linear-to-br from-surface-container-low via-surface to-surface-container">
+			<div class="pointer-events-none absolute -top-16 -right-12 h-52 w-52 rounded-full bg-primary/8 blur-2xl"></div>
+			<div class="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-sky-500/10 blur-2xl"></div>
+
+			<div class="container mx-auto px-6 pt-28 pb-20 md:pt-32 md:pb-24">
+				<div class="max-w-3xl">
+					<div class="inline-flex items-center gap-2 rounded-full border border-outline-variant/50 bg-surface px-3 py-1 text-xs text-on-surface-variant shadow-sm">
+						<span class="material-symbols-outlined text-sm text-primary">work</span>
+						Plataforma de control para proyectos
+					</div>
+
+					<h1 class="mt-6 text-4xl leading-tight font-black tracking-tight text-on-surface md:text-6xl">
+						Control total de
+						<span class="text-primary">costos, valuaciones y cobros</span>
+						en un solo lugar.
+					</h1>
+
+					<p class="mt-5 max-w-2xl text-base leading-relaxed text-on-surface-variant md:text-lg">
+						Budget centraliza la operación de tus obras para que la gerencia de proyecto tenga visibilidad real sobre presupuesto,
+						ejecución y flujo de caja, sin hojas sueltas ni reportes dispersos.
+					</p>
+
+					<div class="mt-8 flex flex-wrap gap-3">
+						<a
+							href="https://wa.me/?text=Hola%2C%20quiero%20conocer%20la%20demo%20de%20la%20app%20Budget"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-on-primary shadow-sm transition hover:brightness-95"
+						>
+							<span class="material-symbols-outlined text-base">chat</span>
+							Solicitar demo por WhatsApp
+						</a>
+						<a
+							href="/projects"
+							class="inline-flex items-center gap-2 rounded-lg border border-outline-variant bg-surface px-5 py-3 text-sm font-semibold text-on-surface transition hover:bg-surface-container"
+						>
+							<span class="material-symbols-outlined text-base">dashboard</span>
+							Entrar al sistema
+						</a>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="container mx-auto px-6 py-16 md:py-20">
+			<div class="max-w-2xl">
+				<h2 class="text-2xl font-bold md:text-3xl">Problemas que resuelve</h2>
+				<p class="mt-2 text-on-surface-variant">
+					Diseñada para evitar pérdidas de control operativo y financiero durante la ejecución de proyectos.
+				</p>
+			</div>
+
+			<div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+				<article class="rounded-2xl border border-outline-variant/40 bg-surface-container-low p-5 shadow-sm">
+					<span class="material-symbols-outlined text-primary">monitoring</span>
+					<h3 class="mt-3 text-lg font-semibold">Falta de visibilidad diaria</h3>
+					<p class="mt-2 text-sm leading-relaxed text-on-surface-variant">Monitorea avance físico y financiero sin depender de reportes manuales tardíos.</p>
+				</article>
+				<article class="rounded-2xl border border-outline-variant/40 bg-surface-container-low p-5 shadow-sm">
+					<span class="material-symbols-outlined text-primary">receipt_long</span>
+					<h3 class="mt-3 text-lg font-semibold">Desorden en valuaciones</h3>
+					<p class="mt-2 text-sm leading-relaxed text-on-surface-variant">Gestiona valuaciones, partidas y estatus con trazabilidad completa y formato de impresión.</p>
+				</article>
+				<article class="rounded-2xl border border-outline-variant/40 bg-surface-container-low p-5 shadow-sm">
+					<span class="material-symbols-outlined text-primary">payments</span>
+					<h3 class="mt-3 text-lg font-semibold">Cobros y presupuesto desconectados</h3>
+					<p class="mt-2 text-sm leading-relaxed text-on-surface-variant">Relaciona cobros, costos y presupuesto para tomar decisiones con números reales.</p>
+				</article>
+			</div>
+		</section>
+
+		<section class="border-y border-outline-variant/40 bg-surface-container-low/60">
+			<div class="container mx-auto px-6 py-16 md:py-20">
+				<div class="max-w-2xl">
+					<h2 class="text-2xl font-bold md:text-3xl">Funcionalidades clave</h2>
+					<p class="mt-2 text-on-surface-variant">Módulos enfocados en la operación real de una gerencia de proyectos.</p>
+				</div>
+
+				<div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5">
+						<div class="inline-flex rounded-lg bg-primary/10 p-2 text-primary"><span class="material-symbols-outlined">inventory_2</span></div>
+						<h3 class="mt-3 font-semibold">Partidas y presupuesto</h3>
+						<p class="mt-2 text-sm text-on-surface-variant">Control por partida, unidad, cantidades y costos con base estructurada.</p>
+					</article>
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5">
+						<div class="inline-flex rounded-lg bg-primary/10 p-2 text-primary"><span class="material-symbols-outlined">fact_check</span></div>
+						<h3 class="mt-3 font-semibold">Valuaciones por proyecto</h3>
+						<p class="mt-2 text-sm text-on-surface-variant">Crea, edita, imprime y consulta valuaciones con trazabilidad por ítem.</p>
+					</article>
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5">
+						<div class="inline-flex rounded-lg bg-primary/10 p-2 text-primary"><span class="material-symbols-outlined">account_balance_wallet</span></div>
+						<h3 class="mt-3 font-semibold">Cobros y flujo de caja</h3>
+						<p class="mt-2 text-sm text-on-surface-variant">Registra cobros directos, anticipos y avance de recuperación del proyecto.</p>
+					</article>
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5">
+						<div class="inline-flex rounded-lg bg-primary/10 p-2 text-primary"><span class="material-symbols-outlined">payments</span></div>
+						<h3 class="mt-3 font-semibold">Gastos y nómina</h3>
+						<p class="mt-2 text-sm text-on-surface-variant">Integra gastos operativos y control de personal para visión de costo total.</p>
+					</article>
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5">
+						<div class="inline-flex rounded-lg bg-primary/10 p-2 text-primary"><span class="material-symbols-outlined">query_stats</span></div>
+						<h3 class="mt-3 font-semibold">KPIs de gestión</h3>
+						<p class="mt-2 text-sm text-on-surface-variant">Indicadores de gastado, cobrado, pendiente y estado financiero del proyecto.</p>
+					</article>
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5">
+						<div class="inline-flex rounded-lg bg-primary/10 p-2 text-primary"><span class="material-symbols-outlined">picture_as_pdf</span></div>
+						<h3 class="mt-3 font-semibold">Impresión y PDF</h3>
+						<p class="mt-2 text-sm text-on-surface-variant">Documentos listos para presentación interna o entrega a dirección.</p>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<section class="container mx-auto px-6 py-16 md:py-20">
+			<div class="max-w-2xl">
+				<h2 class="text-2xl font-bold md:text-3xl">Cómo funciona</h2>
+			</div>
+
+			<div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+				<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5 shadow-sm">
+					<span class="text-xs font-bold text-primary">Paso 1</span>
+					<h3 class="mt-2 text-lg font-semibold">Configura el proyecto</h3>
+					<p class="mt-2 text-sm text-on-surface-variant">Define presupuesto, partidas y parámetros iniciales.</p>
+				</article>
+				<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5 shadow-sm">
+					<span class="text-xs font-bold text-primary">Paso 2</span>
+					<h3 class="mt-2 text-lg font-semibold">Registra la ejecución</h3>
+					<p class="mt-2 text-sm text-on-surface-variant">Captura valuaciones, gastos, nómina y cobros conforme avanza la obra.</p>
+				</article>
+				<article class="rounded-2xl border border-outline-variant/40 bg-surface p-5 shadow-sm">
+					<span class="text-xs font-bold text-primary">Paso 3</span>
+					<h3 class="mt-2 text-lg font-semibold">Toma decisiones</h3>
+					<p class="mt-2 text-sm text-on-surface-variant">Analiza KPIs y reportes para ajustar rumbo a tiempo.</p>
+				</article>
+			</div>
+		</section>
+
+		<section class="border-y border-outline-variant/40 bg-surface-container-low/50">
+			<div class="container mx-auto px-6 py-16 md:py-20">
+				<div class="max-w-2xl">
+					<h2 class="text-2xl font-bold md:text-3xl">Capturas / Mockups</h2>
+					<p class="mt-2 text-on-surface-variant">Vista previa de cómo se ve el seguimiento operativo dentro de la plataforma.</p>
+				</div>
+
+				<div class="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-4 shadow-sm">
+						<div class="mb-3 flex items-center gap-2 text-xs text-on-surface-variant">
+							<span class="material-symbols-outlined text-sm">monitor</span>
+							Dashboard de proyecto
+						</div>
+						<div class="aspect-16/10 rounded-xl border border-outline-variant/30 bg-linear-to-br from-surface-container to-surface"></div>
+					</article>
+					<article class="rounded-2xl border border-outline-variant/40 bg-surface p-4 shadow-sm">
+						<div class="mb-3 flex items-center gap-2 text-xs text-on-surface-variant">
+							<span class="material-symbols-outlined text-sm">description</span>
+							Valuaciones e impresión
+						</div>
+						<div class="aspect-16/10 rounded-xl border border-outline-variant/30 bg-linear-to-br from-surface-container to-surface"></div>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<section class="container mx-auto px-6 py-16 md:py-20">
+			<div class="max-w-2xl">
+				<h2 class="text-2xl font-bold md:text-3xl">Preguntas frecuentes</h2>
+			</div>
+
+			<div class="mt-8 space-y-3">
+				<details class="rounded-xl border border-outline-variant/40 bg-surface p-4">
+					<summary class="cursor-pointer font-semibold">¿Esta app funciona para varios proyectos al mismo tiempo?</summary>
+					<p class="mt-2 text-sm text-on-surface-variant">Sí. Puedes gestionar múltiples proyectos y revisar cada uno con su propio presupuesto, valuaciones y cobros.</p>
+				</details>
+				<details class="rounded-xl border border-outline-variant/40 bg-surface p-4">
+					<summary class="cursor-pointer font-semibold">¿Puedo imprimir valuaciones y reportes?</summary>
+					<p class="mt-2 text-sm text-on-surface-variant">Sí. La plataforma incluye vistas de impresión y generación de documentos para control interno.</p>
+				</details>
+				<details class="rounded-xl border border-outline-variant/40 bg-surface p-4">
+					<summary class="cursor-pointer font-semibold">¿Qué tan rápido se implementa en operación?</summary>
+					<p class="mt-2 text-sm text-on-surface-variant">Depende del volumen de proyectos, pero el enfoque está pensado para adopción rápida por equipos operativos.</p>
+				</details>
+			</div>
+		</section>
+
+		<Footer />
 	</main>
 
   <NavBarMobil />

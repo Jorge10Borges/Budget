@@ -1,12 +1,14 @@
 <?php
 // CRUD endpoint for projects
 header('Content-Type: application/json; charset=utf-8');
-// Allow CORS for local development (adjust in production)
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 // Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -29,9 +31,9 @@ function refValues($arr){
     return $refs;
 }
 
-function get_project_status($mysqli, $projectId) {
-    $stmt = $mysqli->prepare('SELECT status FROM projects WHERE id = ? LIMIT 1');
-    $stmt->bind_param('i', $projectId);
+function get_project_status($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT status FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
     $stmt->execute();
     $res = $stmt->get_result();
     $row = $res->fetch_assoc();
@@ -124,6 +126,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
 try {
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
+
     $payrollJoinSql = payroll_join_sql($mysqli);
     $collectionsJoinSql = collections_join_sql($mysqli);
 
@@ -160,9 +165,9 @@ try {
                         FROM valuations
                         GROUP BY project_id
                     ) vt ON vt.project_id = p.id
-                    WHERE p.id = ? LIMIT 1";
+                        WHERE p.id = ? AND p.company_id = ? LIMIT 1";
             $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('i', $id);
+                    $stmt->bind_param('ii', $id, $company_id);
             $stmt->execute();
             $res = $stmt->get_result();
             $row = $res->fetch_assoc();
@@ -205,11 +210,11 @@ try {
                         FROM valuations
                         GROUP BY project_id
                     ) vt ON vt.project_id = p.id
-                    WHERE p.deleted_at IS NULL
+                        WHERE p.deleted_at IS NULL AND p.company_id = ?
                     ORDER BY p.id DESC
                     LIMIT ? OFFSET ?";
             $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('ii', $limit, $offset);
+                    $stmt->bind_param('iii', $company_id, $limit, $offset);
             $stmt->execute();
             $res = $stmt->get_result();
             $rows = [];
@@ -241,9 +246,9 @@ try {
         $spent = isset($data['spent']) ? (float)$data['spent'] : 0.00;
         $metadata = isset($data['metadata']) ? $data['metadata'] : null;
         $metadata = is_array($metadata) ? json_encode($metadata) : $metadata;
-        $stmt = $mysqli->prepare('INSERT INTO projects (external_id, name, description, client, owner_user_id, status, currency, start_date, end_date, last_activity, collected, spent, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $types = 'ssssisssssdds';
-        $bind = [$types, $external_id, $name, $description, $client, $owner_user_id, $status, $currency, $start_date, $end_date, $last_activity, $collected, $spent, $metadata];
+        $stmt = $mysqli->prepare('INSERT INTO projects (company_id, external_id, name, description, client, owner_user_id, status, currency, start_date, end_date, last_activity, collected, spent, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $types = 'issssisssssdds';
+        $bind = [$types, $company_id, $external_id, $name, $description, $client, $owner_user_id, $status, $currency, $start_date, $end_date, $last_activity, $collected, $spent, $metadata];
         call_user_func_array([$stmt, 'bind_param'], refValues($bind));
         $ok = $stmt->execute();
         if (!$ok) {
@@ -260,7 +265,7 @@ try {
 
     if ($method === 'PUT') {
         if (!$id) { http_response_code(400); echo json_encode(['error' => 'id required']); exit; }
-        $currentStatus = get_project_status($mysqli, $id);
+        $currentStatus = get_project_status($mysqli, $id, $company_id);
         if ($currentStatus === null) { http_response_code(404); echo json_encode(['error' => 'Project not found']); exit; }
         $data = get_json_body();
 
@@ -304,9 +309,11 @@ try {
         }
         $types .= 'i'; // id
         $values[] = $id;
-        $sql = 'UPDATE projects SET ' . implode(', ', $fields) . ' WHERE id = ? LIMIT 1';
+        $sql = 'UPDATE projects SET ' . implode(', ', $fields) . ' WHERE id = ? AND company_id = ? LIMIT 1';
         $stmt = $mysqli->prepare($sql);
         $bind = array_merge([$types], $values);
+        $bind[0] .= 'i';
+        $bind[] = $company_id;
         call_user_func_array([$stmt, 'bind_param'], refValues($bind));
         $ok = $stmt->execute();
         if (!$ok) { http_response_code(500); echo json_encode(['error' => 'Update failed', 'message' => $stmt->error]); exit; }
@@ -317,15 +324,15 @@ try {
 
     if ($method === 'DELETE') {
         if (!$id) { http_response_code(400); echo json_encode(['error' => 'id required']); exit; }
-        $currentStatus = get_project_status($mysqli, $id);
+        $currentStatus = get_project_status($mysqli, $id, $company_id);
         if ($currentStatus === null) { http_response_code(404); echo json_encode(['error' => 'Project not found']); exit; }
         if ($currentStatus !== 'draft') {
             http_response_code(409);
             echo json_encode(['error' => 'Project is locked', 'message' => 'Solo se puede modificar un proyecto en estado draft']);
             exit;
         }
-        $stmt = $mysqli->prepare('UPDATE projects SET deleted_at = NOW(), is_active = 0 WHERE id = ? LIMIT 1');
-        $stmt->bind_param('i', $id);
+        $stmt = $mysqli->prepare('UPDATE projects SET deleted_at = NOW(), is_active = 0 WHERE id = ? AND company_id = ? LIMIT 1');
+        $stmt->bind_param('ii', $id, $company_id);
         $ok = $stmt->execute();
         if (!$ok) { http_response_code(500); echo json_encode(['error' => 'Delete failed', 'message' => $stmt->error]); exit; }
         echo json_encode(['data' => ['id' => $id]]);

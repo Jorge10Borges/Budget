@@ -1,7 +1,7 @@
 ---
 import "../styles/global.css";
 
-const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://localhost/Budget/api";
+const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://192.168.1.200/Budget/api";
 ---
 
 <html lang="es-ES">
@@ -18,5 +18,49 @@ const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://localhost/Bu
 	</head>
 	<body class="pb-20 md:pb-0">
     <slot />
+		<script>
+			(function () {
+				try {
+					const path = (location.pathname || '/').replace(/\/$/, '') || '/';
+					const publicPaths = new Set(['/', '/login']);
+					const shouldCheckSession = path === '/login' || !publicPaths.has(path);
+					if (!shouldCheckSession) {
+						return;
+					}
+					const meta = document.querySelector('meta[name="api-base"]') as HTMLMetaElement | null;
+					const metaContent = meta ? meta.content : null;
+					const apiBase = (metaContent || 'http://192.168.1.200/Budget/api').replace(/\/$/, '');
+
+					fetch(apiBase + '/auth_me.php', {
+						method: 'GET',
+						credentials: 'include'
+					})
+						.then(function (res) {
+							return res.json().catch(function () { return { authenticated: false }; });
+						})
+						.then(function (payload) {
+							const isAuthenticated = !!(payload && payload.authenticated);
+
+							if (isAuthenticated) {
+								if (path === '/login') {
+									location.replace('/projects');
+								}
+								return;
+							}
+
+							if (!publicPaths.has(path)) {
+								location.replace('/login?next=' + encodeURIComponent(location.pathname + location.search));
+							}
+						})
+						.catch(function () {
+							if (!publicPaths.has(path)) {
+								location.replace('/login?next=' + encodeURIComponent(location.pathname + location.search));
+							}
+						});
+				} catch (e) {
+					/* ignore guard errors */
+				}
+			})();
+		</script>
 	</body>
 </html>

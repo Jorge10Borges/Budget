@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -29,6 +32,19 @@ function get_project_status($mysqli, $projectId) {
     return $row ? (string)($row['status'] ?? '') : null;
 }
 
+function assert_project_company($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
+        exit;
+    }
+}
+
 function ensure_project_is_draft($mysqli, $projectId) {
     $status = get_project_status($mysqli, $projectId);
     if ($status === null) {
@@ -45,6 +61,8 @@ function ensure_project_is_draft($mysqli, $projectId) {
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
 
     if ($method === 'GET') {
         $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
@@ -53,6 +71,8 @@ try {
             echo json_encode(['error' => 'project_id is required']);
             exit;
         }
+
+        assert_project_company($mysqli, $project_id, $company_id);
 
         $sql = "SELECT pi.id, pi.project_id, pi.item_id, COALESCE(i.name, '') AS item_name, COALESCE(i.unit, '') AS unit,
                        COALESCE(pi.qty, 0) AS qty,
@@ -92,6 +112,7 @@ try {
             echo json_encode(['error' => 'project_id and item_id are required']);
             exit;
         }
+        assert_project_company($mysqli, $project_id, $company_id);
         ensure_project_is_draft($mysqli, $project_id);
         $total_cost = round($qty * $unit_cost, 2);
         $ins = $mysqli->prepare("INSERT INTO project_items (project_id, item_id, qty, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)");
@@ -122,8 +143,8 @@ try {
             exit;
         }
         // Obtener valores actuales
-        $sel = $mysqli->prepare("SELECT project_id, qty, unit_cost FROM project_items WHERE id = ?");
-        $sel->bind_param('i', $id);
+        $sel = $mysqli->prepare("SELECT pi.project_id, pi.qty, pi.unit_cost FROM project_items pi INNER JOIN projects p ON p.id = pi.project_id WHERE pi.id = ? AND p.company_id = ?");
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $res = $sel->get_result();
         $row = $res->fetch_assoc();
@@ -162,8 +183,8 @@ try {
             echo json_encode(['error' => 'id is required for delete']);
             exit;
         }
-        $sel = $mysqli->prepare("SELECT project_id FROM project_items WHERE id = ? LIMIT 1");
-        $sel->bind_param('i', $id);
+        $sel = $mysqli->prepare("SELECT pi.project_id FROM project_items pi INNER JOIN projects p ON p.id = pi.project_id WHERE pi.id = ? AND p.company_id = ? LIMIT 1");
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $res = $sel->get_result();
         $row = $res->fetch_assoc();

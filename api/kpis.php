@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -109,6 +112,23 @@ function sum_payroll_amount($mysqli, $project_id) {
 
     return (float)($row['total'] ?? 0);
 }
+
+function assert_project_company($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
+        exit;
+    }
+}
+
+$auth = require_auth($mysqli);
+$company_id = (int)$auth['company_id'];
+assert_project_company($mysqli, $project_id, $company_id);
 
 $result = [];
 $result['project_items'] = counts_for_table($mysqli, 'project_items', $project_id, 'project_id');

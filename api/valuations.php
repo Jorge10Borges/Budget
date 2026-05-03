@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -58,9 +61,20 @@ function strip_valuator_prefix_from_notes($notes) {
     return trim((string)$clean);
 }
 
+function project_belongs_company($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return (bool)$row;
+}
+
 try {
     $method = $_SERVER['REQUEST_METHOD'];
     $hasValuatorColumn = column_exists($mysqli, 'valuations', 'valuator');
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
 
     if ($method === 'POST') {
         $body = get_json_body();
@@ -81,6 +95,11 @@ try {
         if ($project_id <= 0) {
             http_response_code(400);
             echo json_encode(['error' => 'project_id is required']);
+            exit;
+        }
+        if (!project_belongs_company($mysqli, $project_id, $company_id)) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Project not found']);
             exit;
         }
         if ($date === '') {
@@ -192,8 +211,8 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT id, project_id, status FROM valuations WHERE id = ? LIMIT 1');
-        $sel->bind_param('i', $id);
+        $sel = $mysqli->prepare('SELECT v.id, v.project_id, v.status FROM valuations v INNER JOIN projects p ON p.id = v.project_id WHERE v.id = ? AND p.company_id = ? LIMIT 1');
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $res = $sel->get_result();
         $row = $res->fetch_assoc();
@@ -360,8 +379,8 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT id, status FROM valuations WHERE id = ? LIMIT 1');
-        $sel->bind_param('i', $id);
+        $sel = $mysqli->prepare('SELECT v.id, v.status FROM valuations v INNER JOIN projects p ON p.id = v.project_id WHERE v.id = ? AND p.company_id = ? LIMIT 1');
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $res = $sel->get_result();
         $row = $res->fetch_assoc();
@@ -422,8 +441,8 @@ try {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
     if ($id) {
-        $stmt = $mysqli->prepare("SELECT * FROM valuations WHERE id = ? LIMIT 1");
-        $stmt->bind_param('i', $id);
+        $stmt = $mysqli->prepare("SELECT v.* FROM valuations v INNER JOIN projects p ON p.id = v.project_id WHERE v.id = ? AND p.company_id = ? LIMIT 1");
+        $stmt->bind_param('ii', $id, $company_id);
         $stmt->execute();
         $res = $stmt->get_result();
         $row = $res->fetch_assoc();
@@ -440,6 +459,12 @@ try {
     if (!$project_id) {
         http_response_code(400);
         echo json_encode(['error' => 'project_id is required']);
+        exit;
+    }
+
+    if (!project_belongs_company($mysqli, $project_id, $company_id)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
         exit;
     }
 

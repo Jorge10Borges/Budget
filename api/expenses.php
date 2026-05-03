@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -25,6 +28,19 @@ function get_project_status($mysqli, $projectId) {
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     return $row ? (string)($row['status'] ?? '') : null;
+}
+
+function assert_project_company($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
+        exit;
+    }
 }
 
 function ensure_project_item_belongs_to_project($mysqli, $projectItemId, $projectId) {
@@ -57,6 +73,8 @@ function ensure_expense_category_exists($mysqli, $categoryId) {
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
 
     if ($method === 'GET') {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
@@ -66,10 +84,11 @@ try {
                     LEFT JOIN project_items pi ON pi.id = e.project_item_id
                     LEFT JOIN items i ON i.id = pi.item_id
                     LEFT JOIN expense_categories c ON c.id = e.category_id
-                    WHERE e.id = ?
+                    INNER JOIN projects p ON p.id = e.project_id
+                    WHERE e.id = ? AND p.company_id = ?
                     LIMIT 1";
             $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('i', $id);
+            $stmt->bind_param('ii', $id, $company_id);
             $stmt->execute();
             $row = $stmt->get_result()->fetch_assoc();
             $stmt->close();
@@ -88,6 +107,7 @@ try {
             echo json_encode(['error' => 'project_id is required']);
             exit;
         }
+        assert_project_company($mysqli, $project_id, $company_id);
 
         $sql = "SELECT e.id, e.project_id, e.project_item_id, e.category_id, e.expense_date, e.description,
                        e.amount, e.currency, e.status, e.vendor, e.reference, e.notes, e.created_at, e.updated_at,
@@ -134,6 +154,7 @@ try {
             echo json_encode(['error' => 'project_id is required']);
             exit;
         }
+        assert_project_company($mysqli, $project_id, $company_id);
         if ($expense_date === '') {
             http_response_code(400);
             echo json_encode(['error' => 'expense_date is required']);
@@ -188,8 +209,8 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT * FROM expenses WHERE id = ? LIMIT 1');
-        $sel->bind_param('i', $id);
+        $sel = $mysqli->prepare('SELECT e.* FROM expenses e INNER JOIN projects p ON p.id = e.project_id WHERE e.id = ? AND p.company_id = ? LIMIT 1');
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $row = $sel->get_result()->fetch_assoc();
         $sel->close();
@@ -265,8 +286,8 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT project_id FROM expenses WHERE id = ? LIMIT 1');
-        $sel->bind_param('i', $id);
+        $sel = $mysqli->prepare('SELECT e.project_id FROM expenses e INNER JOIN projects p ON p.id = e.project_id WHERE e.id = ? AND p.company_id = ? LIMIT 1');
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $row = $sel->get_result()->fetch_assoc();
         $sel->close();

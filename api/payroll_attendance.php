@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -102,12 +105,27 @@ function get_employee($mysqli, $employee_id, $project_id) {
     return $row ?: null;
 }
 
+function assert_project_company($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
+        exit;
+    }
+}
+
 try {
     $hasProjectEmployees = table_exists($mysqli, 'project_employees');
     $payrollHasProjectId = column_exists($mysqli, 'payroll_entries', 'project_id');
     $employeesHasProjectId = column_exists($mysqli, 'employees', 'project_id');
 
     $method = $_SERVER['REQUEST_METHOD'];
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
 
     if ($method === 'GET') {
         $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
@@ -116,6 +134,7 @@ try {
             echo json_encode(['error' => 'project_id is required']);
             exit;
         }
+        assert_project_company($mysqli, $project_id, $company_id);
 
         $start_date = isset($_GET['start_date']) ? trim((string)$_GET['start_date']) : '';
         $end_date = isset($_GET['end_date']) ? trim((string)$_GET['end_date']) : '';
@@ -229,6 +248,7 @@ try {
             echo json_encode(['error' => 'project_id, employee_id and work_date are required']);
             exit;
         }
+        assert_project_company($mysqli, $project_id, $company_id);
         if ($has_paid_amount && $paid_amount < 0) {
             http_response_code(400);
             echo json_encode(['error' => 'paid_amount must be >= 0']);
@@ -335,6 +355,9 @@ try {
             http_response_code(400);
             echo json_encode(['error' => $payrollHasProjectId ? 'project_id, employee_id and work_date are required' : 'employee_id and work_date are required']);
             exit;
+        }
+        if ($payrollHasProjectId) {
+            assert_project_company($mysqli, $project_id, $company_id);
         }
 
         if ($payrollHasProjectId) {

@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_common.php';
+require_once __DIR__ . '/auth_middleware.php';
+
+auth_send_cors();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -22,19 +25,37 @@ function validate_kind($kind) {
     return in_array($kind, ['anticipo', 'otro'], true);
 }
 
+function assert_project_company($mysqli, $projectId, $companyId) {
+    $stmt = $mysqli->prepare('SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $projectId, $companyId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Project not found']);
+        exit;
+    }
+}
+
 try {
     $method = $_SERVER['REQUEST_METHOD'];
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    $auth = require_auth($mysqli);
+    $company_id = (int)$auth['company_id'];
 
     if ($method === 'GET') {
         if ($id > 0) {
-            $stmt = $mysqli->prepare('SELECT id, project_id, collection_date, amount, collection_kind, other_type, notes, created_at, updated_at FROM project_collections WHERE id = ? LIMIT 1');
+            $stmt = $mysqli->prepare('SELECT pc.id, pc.project_id, pc.collection_date, pc.amount, pc.collection_kind, pc.other_type, pc.notes, pc.created_at, pc.updated_at
+                                      FROM project_collections pc
+                                      INNER JOIN projects p ON p.id = pc.project_id
+                                      WHERE pc.id = ? AND p.company_id = ? LIMIT 1');
             if (!$stmt) {
                 http_response_code(500);
                 echo json_encode(['error' => 'Prepare failed', 'message' => $mysqli->error]);
                 exit;
             }
-            $stmt->bind_param('i', $id);
+            $stmt->bind_param('ii', $id, $company_id);
             $stmt->execute();
             $row = $stmt->get_result()->fetch_assoc();
             $stmt->close();
@@ -55,6 +76,7 @@ try {
             echo json_encode(['error' => 'project_id is required']);
             exit;
         }
+        assert_project_company($mysqli, $project_id, $company_id);
 
         $sql = 'SELECT id, project_id, collection_date, amount, collection_kind, other_type, notes, created_at, updated_at
                 FROM project_collections
@@ -126,22 +148,7 @@ try {
             $other_type = null;
         }
 
-        $check = $mysqli->prepare('SELECT id FROM projects WHERE id = ? LIMIT 1');
-        if (!$check) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Prepare failed', 'message' => $mysqli->error]);
-            exit;
-        }
-        $check->bind_param('i', $project_id);
-        $check->execute();
-        $exists = $check->get_result()->fetch_assoc();
-        $check->close();
-
-        if (!$exists) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Project not found']);
-            exit;
-        }
+        assert_project_company($mysqli, $project_id, $company_id);
 
         $ins = $mysqli->prepare('INSERT INTO project_collections (project_id, collection_date, amount, collection_kind, other_type, notes) VALUES (?, ?, ?, ?, ?, ?)');
         if (!$ins) {
@@ -179,13 +186,16 @@ try {
             exit;
         }
 
-        $sel = $mysqli->prepare('SELECT id, project_id, collection_date, amount, collection_kind, other_type, notes FROM project_collections WHERE id = ? LIMIT 1');
+        $sel = $mysqli->prepare('SELECT pc.id, pc.project_id, pc.collection_date, pc.amount, pc.collection_kind, pc.other_type, pc.notes
+                     FROM project_collections pc
+                     INNER JOIN projects p ON p.id = pc.project_id
+                     WHERE pc.id = ? AND p.company_id = ? LIMIT 1');
         if (!$sel) {
             http_response_code(500);
             echo json_encode(['error' => 'Prepare failed', 'message' => $mysqli->error]);
             exit;
         }
-        $sel->bind_param('i', $id);
+        $sel->bind_param('ii', $id, $company_id);
         $sel->execute();
         $current = $sel->get_result()->fetch_assoc();
         $sel->close();
@@ -260,14 +270,14 @@ try {
             exit;
         }
 
-        $del = $mysqli->prepare('DELETE FROM project_collections WHERE id = ? LIMIT 1');
+        $del = $mysqli->prepare('DELETE pc FROM project_collections pc INNER JOIN projects p ON p.id = pc.project_id WHERE pc.id = ? AND p.company_id = ? LIMIT 1');
         if (!$del) {
             http_response_code(500);
             echo json_encode(['error' => 'Prepare failed', 'message' => $mysqli->error]);
             exit;
         }
 
-        $del->bind_param('i', $id);
+        $del->bind_param('ii', $id, $company_id);
         if (!$del->execute()) {
             http_response_code(500);
             echo json_encode(['error' => 'Delete failed', 'message' => $del->error]);

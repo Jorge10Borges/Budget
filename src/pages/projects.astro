@@ -54,7 +54,7 @@ import NavBarMobil from '../components/NavBarMobil.astro';
 
     async function loadProjects() {
       try {
-        const res = await fetch(apiUrl, { cache: 'no-store' });
+        const res = await fetch(apiUrl, { cache: 'no-store', credentials: 'include' });
         if (!res.ok) throw new Error('Fetch error');
         let data = await res.json();
         if (!Array.isArray(data)) data = data.data || data.projects || data;
