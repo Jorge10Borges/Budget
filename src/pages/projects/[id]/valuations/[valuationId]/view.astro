@@ -154,7 +154,7 @@ const totalCell = document.getElementById('print-total-cell');
 async function fetchValuation() {
   try {
     if (!valuationIdFromPath) return null;
-    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/valuations.php?id=${encodeURIComponent(valuationIdFromPath)}`);
+    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/valuations.php?id=${encodeURIComponent(valuationIdFromPath)}`, { credentials: 'include' });
     if (!res.ok) return null;
     const data = await res.json();
     if (data && data.data && Array.isArray(data.data)) return data.data[0];
@@ -168,7 +168,7 @@ async function fetchValuation() {
 async function fetchProjectName(projectId) {
   try {
     if (!projectId) return null;
-    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(projectId)}`);
+    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/projects.php?id=${encodeURIComponent(projectId)}`, { credentials: 'include' });
     if (!res.ok) return null;
     const data = await res.json();
     const first = Array.isArray(data)
@@ -183,7 +183,7 @@ async function fetchProjectName(projectId) {
 async function fetchValuationItems() {
   try {
     if (!valuationIdFromPath) return [];
-    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/valuation_items.php?valuation_id=${encodeURIComponent(valuationIdFromPath)}`);
+    const res = await fetch(`${_apiBase.replace(/\/$/, '')}/valuation_items.php?valuation_id=${encodeURIComponent(valuationIdFromPath)}`, { credentials: 'include' });
     if (!res.ok) return [];
     const data = await res.json();
     if (data && data.data && Array.isArray(data.data)) return data.data;
